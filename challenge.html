@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Challenge Mode — MPL</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/challenge.css" />
+  <link rel="stylesheet" href="assets/css/shared-theme.css" />
+</head>
+<body>
+  <div class="bg-photo" aria-hidden="true"></div>
+<div class="bg-tint" aria-hidden="true"></div>
+<div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<canvas id="stars"></canvas>
+<div class="grid-bg"></div>
+
+<div class="page">
+
+  <!-- ── LOGIN ── -->
+  <div id="login-view">
+    <div class="login-box">
+      <div class="login-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line><line x1="8" y1="16" x2="4" y2="20"></line><line x1="5" y1="21" x2="3" y2="19"></line></svg></div>
+      <h2>Challenge Mode</h2>
+      <p class="login-sub">Login and wait for admin to start a challenge session for your team.</p>
+      <div class="inp-wrap">
+        <label for="team-name">Team Name</label>
+        <input type="text" id="team-name" placeholder="e.g. Team Alpha" autocomplete="off" />
+      </div>
+      <div class="inp-wrap">
+        <label for="passcode">Passcode</label>
+        <input type="password" id="passcode" placeholder="••••••••" />
+      </div>
+      <button class="btn-login" id="login-btn" onclick="doLogin()">Enter Arena</button>
+      <div class="err-msg" id="err-msg"></div>
+      <div class="back-link"><a href="index.html">← Back to Hub</a></div>
+    </div>
+  </div>
+
+  <!-- ── CHALLENGE VIEW ── -->
+  <div id="challenge-view">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="team-pill">
+          <div class="avatar" id="team-avatar">?</div>
+          <span class="tname" id="team-name-display">Team</span>
+        </div>
+        <span style="color:var(--muted);font-size:.85rem"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line><line x1="8" y1="16" x2="4" y2="20"></line><line x1="5" y1="21" x2="3" y2="19"></line></svg> Challenge Arena</span>
+        <button class="btn-logout" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- ── LOCKED / WAITING state ── -->
+    <div id="locked-state">
+      <div class="lock-anim"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line><line x1="8" y1="16" x2="4" y2="20"></line><line x1="5" y1="21" x2="3" y2="19"></line></svg></div>
+      <div class="lock-title">Awaiting Challenge</div>
+      <p class="lock-sub">
+        You're in the arena — now wait for the admin to start a challenge session for your team.
+        This page will automatically unlock when your challenge begins.
+      </p>
+      <div class="poll-indicator">
+        <div class="poll-dot"></div>
+        <span>Checking for active challenge every 5 seconds…</span>
+      </div>
+    </div>
+
+    <!-- ── ACTIVE CHALLENGE state ── -->
+    <div id="active-state">
+      <div class="wrap">
+        <div class="challenge-banner" id="challenge-banner">
+          <div class="cb-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line><line x1="8" y1="16" x2="4" y2="20"></line><line x1="5" y1="21" x2="3" y2="19"></line></svg></div>
+          <div class="cb-text">
+            <h2>Challenge is LIVE!</h2>
+            <p id="challenge-sub">Solve the question below. First team to finish wins!</p>
+          </div>
+          <div class="cb-reward" id="reward-box">
+            <div class="r-val" id="reward-val">500</div>
+            <div class="r-label">Bonus Points</div>
+          </div>
+        </div>
+
+        <div class="completed-banner" id="completed-banner">
+          <h3><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg> Challenge Complete!</h3>
+          <p>This challenge has ended. Check with the admin for the final result.</p>
+        </div>
+
+        <div id="q-loading" style="padding:40px 0">
+          <div style="height:32px;width:60%;background:rgba(255,255,255,.06);border-radius:8px;margin-bottom:16px;animation:shimmer 1.5s infinite"></div>
+          <div style="height:16px;background:rgba(255,255,255,.06);border-radius:6px;animation:shimmer 1.5s infinite"></div>
+        </div>
+
+        <div class="q-card" id="q-card" style="display:none">
+          <div class="q-header">
+            <div class="q-meta">
+              <span class="badge badge-challenge">Challenge</span>
+              <span class="badge badge-hard" id="diff-badge">Hard</span>
+            </div>
+            <div class="q-title" id="q-title">Loading…</div>
+          </div>
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('description')"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> Problem</div>
+            <div class="tab" onclick="switchTab('testcases')"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg> Test Cases</div>
+          </div>
+          <div class="tab-content active" id="tab-description">
+            <pre class="desc-text" id="q-desc"></pre>
+          </div>
+          <div class="tab-content" id="tab-testcases">
+            <div class="tc-list" id="tc-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- Scripts -->
+  <script src="assets/js/challenge.js"></script>
+  <script src="assets/js/cosmic-interaction.js"></script>
+</body>
+</html>

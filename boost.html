@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bonus Bidding — MPL</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/boost.css" />
+  <link rel="stylesheet" href="assets/css/shared-theme.css" />
+</head>
+<body>
+  <div class="bg-photo" aria-hidden="true"></div>
+<div class="bg-tint" aria-hidden="true"></div>
+<div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<canvas id="stars"></canvas>
+<div class="grid-bg"></div>
+
+<div class="page">
+
+  <!-- ── LOGIN ── -->
+  <div id="login-view">
+    <div class="login-box">
+      <div class="login-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg></div>
+      <h2>Bonus Bidding</h2>
+      <p class="login-sub">Login to see your assigned time-boost questions and earn extra minutes.</p>
+      <div class="inp-wrap">
+        <label for="team-name">Team Name</label>
+        <input type="text" id="team-name" placeholder="e.g. Team Alpha" autocomplete="off" />
+      </div>
+      <div class="inp-wrap">
+        <label for="passcode">Passcode</label>
+        <input type="password" id="passcode" placeholder="••••••••" />
+      </div>
+      <button class="btn-login" id="login-btn" onclick="doLogin()">View My Boosts</button>
+      <div class="err-msg" id="err-msg"></div>
+      <div class="back-link"><a href="index.html">← Back to Hub</a></div>
+    </div>
+  </div>
+
+  <!-- ── BOOST VIEW ── -->
+  <div id="boost-view">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="team-pill">
+          <div class="avatar" id="team-avatar">?</div>
+          <span class="tname" id="team-name-display">Team</span>
+        </div>
+        <span style="color:var(--muted);font-size:.85rem">Time Boost Questions</span>
+        <button class="btn-logout" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="section-head">
+        <h1>Bonus Bidding</h1>
+        <p>Solve these questions to add bonus time to your main question countdown.</p>
+      </div>
+
+      <div class="time-earned-bar" id="teb" style="display:none">
+        <div class="teb-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="8"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="14" x2="12" y2="10"></line><line x1="12" y1="14" x2="15" y2="14"></line></svg></div>
+        <div class="teb-text">
+          <h3>Total Bonus Time Earned</h3>
+          <p>Awarded after admin reviews your submission</p>
+        </div>
+        <div class="teb-val" id="teb-val">+0s</div>
+      </div>
+
+      <div id="boost-list-wrap">
+        <!-- Skeleton loading -->
+        <div id="loading-skeletons">
+          <div style="height:90px" class="skeleton" ></div>
+          <br>
+          <div style="height:90px" class="skeleton"></div>
+        </div>
+        <div class="boost-list" id="boost-list"></div>
+        <div class="empty-state" id="empty-state" style="display:none">
+          <div class="e-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></div>
+          <h3>No boost questions assigned</h3>
+          <p>The admin hasn't assigned any time-boost questions to your team yet.<br>Check back soon!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- Scripts -->
+  <script src="assets/js/boost.js"></script>
+  <script src="assets/js/cosmic-interaction.js"></script>
+</body>
+</html>

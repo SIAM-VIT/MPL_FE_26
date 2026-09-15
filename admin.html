@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — MPL</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/admin.css" />
+  <link rel="stylesheet" href="assets/css/shared-theme.css" />
+</head>
+<body>
+  <div class="bg-photo" aria-hidden="true"></div>
+<div class="bg-tint" aria-hidden="true"></div>
+
+<div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<canvas id="stars"></canvas>
+<div class="grid-bg"></div>
+
+<!-- ══ LOGIN SCREEN ══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+    <h2>Admin Panel</h2>
+    <p class="login-sub">Enter your admin passcode to access the control panel.</p>
+    <div style="margin-bottom:18px">
+      <label for="admin-pass">Admin Passcode</label>
+      <input type="password" id="admin-pass" placeholder="••••••••" />
+    </div>
+    <button class="btn-admin-login" onclick="adminLogin()">Access Panel →</button>
+    <div class="login-err" id="login-err">Invalid passcode. Try again.</div>
+    <div style="margin-top:16px;text-align:center">
+      <a href="index.html" style="color:var(--muted);font-size:.825rem;text-decoration:none">← Back to Hub</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+      <div>
+        <div class="logo-text">MPL Admin</div>
+        <div class="logo-sub">Control Panel</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">Overview</div>
+      <div class="nav-item active" onclick="showPanel('dashboard')" id="nav-dashboard">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span> Dashboard
+      </div>
+
+      <div class="nav-section">Management</div>
+      <div class="nav-item" onclick="showPanel('teams')" id="nav-teams">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span> Teams
+        <span class="ni-badge" id="nav-badge-teams">0</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('questions')" id="nav-questions">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span> Questions
+      </div>
+
+      <div class="nav-section">Operations</div>
+      <div class="nav-item" onclick="showPanel('assign')" id="nav-assign">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span> Assign Boost
+      </div>
+      <div class="nav-item" onclick="showPanel('challenge')" id="nav-challenge">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line><line x1="8" y1="16" x2="4" y2="20"></line><line x1="5" y1="21" x2="3" y2="19"></line></svg></span> Challenge
+      </div>
+      <div class="nav-item" onclick="showPanel('review')" id="nav-review">
+        <span class="ni-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></span> Review
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="admin-pill">
+        <div class="admin-avatar">A</div>
+        <div class="admin-info">
+          <div class="admin-name">Administrator</div>
+          <div class="admin-role">Full Access</div>
+        </div>
+        <button class="btn-signout" onclick="adminLogout()" title="Sign out"><svg class="mpl-icon" style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="main">
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: DASHBOARD
+    ═══════════════════════════════════════════ -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="section-hdr">
+        <h1>Dashboard</h1>
+        <p>Live overview of all teams and event status.</p>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="grid-3" style="margin-bottom:24px">
+        <div class="stat-card">
+          <div class="stat-icon gold"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+          <div>
+            <div class="stat-val" id="stat-teams">—</div>
+            <div class="stat-label">Total Teams</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><span class="pulse-indicator"></span></div>
+          <div>
+            <div class="stat-val" id="stat-active">—</div>
+            <div class="stat-label">Active (timer running)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg></div>
+          <div>
+            <div class="stat-val" id="stat-leader">—</div>
+            <div class="stat-label">Leader (points)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="card">
+        <div class="card-header">
+          <h3><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg> Live Leaderboard</h3>
+          <button class="btn-refresh" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Team</th>
+                  <th>Points</th>
+                  <th>Timer Status</th>
+                  <th>Extra Time</th>
+                  <th>Main Q</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: TEAMS
+    ═══════════════════════════════════════════ -->
+    <div class="panel" id="panel-teams">
+      <div class="section-hdr">
+        <h1>Teams</h1>
+        <p>Create and manage competing teams.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <!-- Create team -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Create Team</h3>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-success" id="create-team-ok"></div>
+            <div class="alert alert-error"   id="create-team-err"></div>
+            <div class="form-row">
+              <label>Team Name</label>
+              <input type="text" id="new-team-name" placeholder="e.g. Team Delta" />
+            </div>
+            <div class="form-row">
+              <label>Passcode</label>
+              <input type="text" id="new-team-pass" placeholder="e.g. delta123" />
+            </div>
+            <button class="btn btn-gold" id="btn-create-team" onclick="createTeam()">Create Team</button>
+          </div>
+        </div>
+
+        <!-- Team list -->
+        <div class="card">
+          <div class="card-header">
+            <h3>All Teams</h3>
+            <button class="btn-refresh" onclick="loadTeams()">↻ Refresh</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th></tr>
+                </thead>
+                <tbody id="teams-table-body">
+                  <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: QUESTIONS
+    ═══════════════════════════════════════════ -->
+    <div class="panel" id="panel-questions">
+      <div class="section-hdr">
+        <h1>Questions</h1>
+        <p>Create new questions for the event.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <!-- Create question -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Create Question</h3>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-success" id="create-q-ok"></div>
+            <div class="alert alert-error"   id="create-q-err"></div>
+
+            <div class="form-row">
+              <label>Title</label>
+              <input type="text" id="q-title" placeholder="e.g. Two Sum Problem" />
+            </div>
+            <div class="form-row">
+              <label>Description</label>
+              <textarea id="q-desc" rows="5" placeholder="Full problem description…"></textarea>
+            </div>
+            <div class="form-row">
+              <label>Test Cases <span style="font-weight:400;text-transform:none;letter-spacing:0">(JSON array)</span></label>
+              <textarea id="q-tc" rows="4" placeholder='[{"input":"...", "expected":"..."}]'></textarea>
+              <div class="form-hint">Must be valid JSON. Each object needs "input" and "expected" keys.</div>
+            </div>
+            <div class="form-2col">
+              <div class="form-row">
+                <label>Type</label>
+                <select id="q-type" onchange="toggleRewardLabel()">
+                  <option value="MAIN">MAIN</option>
+                  <option value="TIME_BOOST">TIME_BOOST</option>
+                  <option value="CHALLENGE">CHALLENGE</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>Difficulty</label>
+                <select id="q-diff">
+                  <option value="">— None —</option>
+                  <option value="EASY">EASY</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HARD">HARD</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label id="reward-label">Reward (seconds for TIME_BOOST, points for CHALLENGE)</label>
+              <input type="number" id="q-reward" value="0" min="0" />
+            </div>
+            <button class="btn btn-gold" id="btn-create-q" onclick="createQuestion()">Create Question</button>
+          </div>
+        </div>
+
+        <!-- Created questions log -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Created This Session</h3>
+            <button class="btn-refresh btn-sm" onclick="renderCreatedQ()">↻</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Title</th><th>Type</th><th>Reward</th></tr>
+                </thead>
+                <tbody id="created-q-body">
+                  <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);font-size:.85rem">Questions you create will appear here.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: ASSIGN BOOST
+    ═══════════════════════════════════════════ -->
+    <div class="panel" id="panel-assign">
+      <div class="section-hdr">
+        <h1>Assign Time Boost</h1>
+        <p>Give a TIME_BOOST question to a team — if they solve it, they earn extra seconds on their timer.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <div class="card-header"><h3>Assign Boost Question</h3></div>
+          <div class="card-body">
+            <div class="alert alert-success" id="assign-ok"></div>
+            <div class="alert alert-error"   id="assign-err"></div>
+
+            <div class="form-row">
+              <label>Team</label>
+              <select id="assign-team-id">
+                <option value="">— Select a team —</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Question ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(TIME_BOOST type)</span></label>
+              <input type="number" id="assign-q-id" placeholder="e.g. 2" min="1" oninput="previewQuestion('assign-q-id','assign-q-preview')" />
+            </div>
+            <div class="q-preview" id="assign-q-preview"></div>
+            <div class="sep"></div>
+            <button class="btn btn-gold" id="btn-assign" onclick="assignBoost()">Assign Boost</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>How Boost Works</h3></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">1️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Assign the boost</div>
+                  <div style="color:var(--muted);font-size:.825rem">Select the team and a TIME_BOOST question ID. Click Assign.</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">2️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Team solves it</div>
+                  <div style="color:var(--muted);font-size:.825rem">The team sees it in their Bonus Bidding page and submits their answer to you.</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">3️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Mark as solved</div>
+                  <div style="color:var(--muted);font-size:.825rem">Go to <strong>Review</strong> panel and mark it solved. Extra time is automatically added to their countdown.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: CHALLENGE
+    ═══════════════════════════════════════════ -->
+    <div class="panel" id="panel-challenge">
+      <div class="section-hdr">
+        <h1>Create Challenge</h1>
+        <p>Start a head-to-head challenge session between 2–3 teams.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <div class="card-header"><h3>New Challenge Session</h3></div>
+          <div class="card-body">
+            <div class="alert alert-success" id="challenge-ok"></div>
+            <div class="alert alert-error"   id="challenge-err"></div>
+
+            <div class="form-row">
+              <label>Challenge Question ID <span style="font-weight:400;text-transform:none;letter-spacing:0">(CHALLENGE type)</span></label>
+              <input type="number" id="ch-q-id" placeholder="e.g. 4" min="1" oninput="previewQuestion('ch-q-id','ch-q-preview')" />
+            </div>
+            <div class="q-preview" id="ch-q-preview"></div>
+
+            <div class="sep"></div>
+
+            <div class="form-2col">
+              <div class="form-row">
+                <label>Team 1</label>
+                <select id="ch-team1"><option value="">— Select —</option></select>
+              </div>
+              <div class="form-row">
+                <label>Team 2</label>
+                <select id="ch-team2"><option value="">— Select —</option></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Team 3 <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+              <select id="ch-team3"><option value="">— None (2-team match) —</option></select>
+            </div>
+
+            <div class="sep"></div>
+            <button class="btn btn-gold" id="btn-create-challenge" onclick="createChallenge()">Start Challenge</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Challenge Flow</h3></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">1️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Start the session</div>
+                  <div style="color:var(--muted);font-size:.825rem">Select a CHALLENGE question and 2–3 teams. Click Start Challenge.</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">2️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Teams auto-unlock</div>
+                  <div style="color:var(--muted);font-size:.825rem">The Challenge page each team has open will automatically detect the session and display the question.</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;align-items:flex-start">
+                <div style="font-size:1.4rem;flex-shrink:0">3️⃣</div>
+                <div>
+                  <div style="font-weight:600;margin-bottom:3px;font-size:.9rem">Pick a winner</div>
+                  <div style="color:var(--muted);font-size:.825rem">Once a team submits, go to <strong>Review</strong> and mark them as the winner. Points are awarded instantly.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         PANEL: REVIEW
+    ═══════════════════════════════════════════ -->
+    <div class="panel" id="panel-review">
+      <div class="section-hdr">
+        <h1>Review & Mark Solved</h1>
+        <p>Mark a team's question submission as solved. Rewards are applied immediately.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <div class="card-header"><h3>Mark as Solved</h3></div>
+          <div class="card-body">
+            <div class="alert alert-success" id="review-ok"></div>
+            <div class="alert alert-error"   id="review-err"></div>
+
+            <div class="form-row">
+              <label>Team</label>
+              <select id="review-team-id">
+                <option value="">— Select a team —</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Question ID</label>
+              <input type="number" id="review-q-id" placeholder="e.g. 2" min="1" oninput="previewQuestion('review-q-id','review-q-preview')" />
+            </div>
+            <div class="q-preview" id="review-q-preview"></div>
+
+            <div class="sep"></div>
+            <button class="btn btn-gold" id="btn-review" onclick="markSolved()">Mark Solved & Award Reward</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Reward Reference</h3></div>
+          <div class="card-body">
+            <p style="color:var(--muted);font-size:.875rem;margin-bottom:20px">What happens when you mark a question solved:</p>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.15);border-radius:12px;padding:14px 16px">
+                <div style="font-size:.8rem;font-weight:700;color:#ffe4a3;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em"><svg class="mpl-icon" style="width:13px;height:13px;margin-right:5px;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> TIME_BOOST</div>
+                <div style="font-size:.85rem;color:var(--text)">Adds <code>reward_value</code> seconds to the team's <code>extra_time_seconds</code>. Their countdown immediately extends.</div>
+              </div>
+              <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:12px;padding:14px 16px">
+                <div style="font-size:.8rem;font-weight:700;color:#fca5a5;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em"><svg class="mpl-icon" style="width:13px;height:13px;margin-right:5px;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline><line x1="11" y1="19" x2="5" y2="13"></line></svg> CHALLENGE</div>
+                <div style="font-size:.85rem;color:var(--text)">Marks the challenge session as <code>COMPLETED</code>, sets the winner, and adds <code>reward_value</code> points to their total score.</div>
+              </div>
+              <div style="background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.15);border-radius:12px;padding:14px 16px">
+                <div style="font-size:.8rem;font-weight:700;color:#c4b5fd;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em"><svg class="mpl-icon" style="width:13px;height:13px;margin-right:5px;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg> MAIN</div>
+                <div style="font-size:.85rem;color:var(--text)">No automatic reward — the main question is scored separately by the admin.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+  <!-- Scripts -->
+  <script src="assets/js/admin.js"></script>
+  <script src="assets/js/cosmic-interaction.js"></script>
+</body>
+</html>

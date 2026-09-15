@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Main Arena — MPL</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="assets/css/main.css" />
+  <link rel="stylesheet" href="assets/css/shared-theme.css" />
+</head>
+<body>
+  <div class="bg-photo" aria-hidden="true"></div>
+  <div class="bg-tint" aria-hidden="true"></div>
+  <div class="aurora"><span class="a1"></span><span class="a2"></span></div>
+  <div class="cursor-glow" id="cursorGlow"></div>
+  <canvas id="stars"></canvas>
+  <div class="grid-bg"></div>
+
+  <div class="page">
+    <!-- ── LOGIN VIEW ── -->
+    <div id="login-view">
+      <div class="login-box">
+        <div class="login-icon"><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg></div>
+        <h2>Main Arena</h2>
+        <p class="login-sub">Enter your team credentials to start your 90-minute countdown.</p>
+
+        <div class="inp-wrap">
+          <label for="team-name">Team Name</label>
+          <input type="text" id="team-name" placeholder="e.g. Team Alpha" autocomplete="off" />
+        </div>
+        <div class="inp-wrap">
+          <label for="passcode">Passcode</label>
+          <input type="password" id="passcode" placeholder="••••••••" />
+        </div>
+
+        <button class="btn-login" id="btn-login">Start Challenge →</button>
+        <div class="err-msg" id="login-err"></div>
+        <div class="back-link"><a href="index.html">← Back to Hub</a></div>
+      </div>
+    </div>
+
+    <!-- ── ARENA VIEW ── -->
+    <div id="arena-view">
+      <!-- Sticky topbar -->
+      <div class="topbar">
+        <div class="topbar-inner">
+          <div class="team-pill">
+            <div class="avatar" id="avatar">?</div>
+            <span class="tname" id="tname">Team</span>
+          </div>
+
+          <div class="timer-block">
+            <div id="timer" class="timer-green">--:--:--</div>
+            <div class="timer-label">Time Remaining</div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="stat-pill">Points <b id="points">0</b></span>
+            <span class="stat-pill">Best <b id="best">0</b></span>
+            <span class="extra-badge" id="extra-badge">+0s bonus</span>
+            <button class="btn-logout" id="btn-logout">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="arena-grid">
+        <!-- Left: Questions list + Problem statement -->
+        <div class="editor-col">
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Questions</span>
+            </div>
+            <div class="q-tabs" id="q-tabs"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Problem Statement</span>
+              <span class="stat-pill"><b id="q-points">0</b> pts</span>
+            </div>
+            <div class="problem-body">
+              <div class="problem-title" id="q-title">—</div>
+              <div class="problem-desc" id="q-desc"></div>
+              <div class="section-label">Sample Tests</div>
+              <div id="q-samples"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Code Editor + Results -->
+        <div class="editor-col">
+          <div class="panel">
+            <div class="editor-bar">
+              <select id="lang-select"></select>
+              <span class="spacer"></span>
+              <span class="hint">Ctrl+Enter to submit</span>
+              <button class="btn btn-run" id="btn-run">▶ Run Samples</button>
+              <button class="btn btn-submit" id="btn-submit">⚡ Submit</button>
+            </div>
+            <div id="monaco-host"></div>
+            <textarea id="code-fallback" spellcheck="false" style="display:none"></textarea>
+            <div class="editor-loading" id="editor-status">Loading editor…</div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Results</span>
+              <span class="hint" id="last-run"></span>
+            </div>
+            <div id="verdict" style="display:none" class="verdict">
+              <span class="verdict-dot" id="v-dot"></span>
+              <span class="verdict-text" id="v-text"></span>
+              <span class="verdict-stats" id="v-stats"></span>
+            </div>
+            <div class="results-list" id="results">
+              <div class="empty">Run the samples or submit your solution to see results.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/cosmic-interaction.js"></script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+@font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url('../fonts/bebas-neue-latin.woff2'), url('../bebas-neue-latin.woff2') format('woff2')}
+    @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url('../fonts/space-grotesk-latin.woff2'), url('../space-grotesk-latin.woff2') format('woff2')}
+    @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400 500;font-display:swap;src:url('../fonts/jetbrains-mono-latin.woff2'), url('../jetbrains-mono-latin.woff2') format('woff2')}
+
+:root{
+    --void:#04060d;
+    --navy-deep:#081226;
+    --navy:#0d1c3a;
+    --navy-mid:#132a52;
+    --royal:#1c4d8f;
+    --gold:#f0b429;
+    --gold-light:#ffe4a3;
+    --gold-dim:#b8862a;
+    --paper:#eef2fb;
+    --paper-dim:#9fb0d1;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    height:100%;
+    background:var(--void);
+    color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    overflow:hidden;
+  }
+
+  body{
+    opacity:0;
+    animation:pageIn 1s ease .05s forwards;
+  }
+  @keyframes pageIn{ to{ opacity:1; } }
+
+  /* ---------- Background photo layer (static, dimmed so the live star layer reads as THE stars) ---------- */
+  .bg-photo{
+    position:fixed;
+    inset:-4%;
+    transform:translate3d(0,0,0) scale(1.06);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1);
+    will-change:transform;
+    background-image: url('../images/cosmic-background.jpg');
+
+    background-size:cover;
+    background-position:center;
+    filter:brightness(0.5) saturate(1.15) contrast(1.05);
+    z-index:0;
+  }
+  .bg-tint{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% 8%, rgba(28,77,143,0.30), transparent 60%),
+      linear-gradient(180deg, rgba(4,6,13,0.62) 0%, rgba(4,6,13,0.32) 30%, rgba(4,6,13,0.58) 72%, rgba(4,6,13,0.94) 100%);
+    pointer-events:none;
+  }
+
+  /* ---------- Aurora ambient glow ---------- */
+  .aurora{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    overflow:hidden;
+    mix-blend-mode:screen;
+    opacity:0.65;
+  }
+  .aurora span{
+    position:absolute;
+    width:60vmax;
+    height:60vmax;
+    border-radius:50%;
+    filter:blur(80px);
+    opacity:0.35;
+  }
+  .aurora span.a1{
+    top:-20%; left:-10%;
+    background:radial-gradient(circle, rgba(28,77,143,0.9), transparent 65%);
+    animation:auroraDrift1 26s ease-in-out infinite;
+  }
+  .aurora span.a2{
+    bottom:-25%; right:-12%;
+    background:radial-gradient(circle, rgba(240,180,41,0.55), transparent 65%);
+    animation:auroraDrift2 32s ease-in-out infinite;
+  }
+  @keyframes auroraDrift1{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(6vw,8vh) scale(1.15); }
+  }
+  @keyframes auroraDrift2{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(-7vw,-6vh) scale(1.1); }
+  }
+
+  .cursor-glow{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background: radial-gradient(circle 460px at var(--mx,50%) var(--my,40%), rgba(240,180,41,0.11), transparent 70%);
+  }
+
+  canvas#stars{
+    position:fixed;
+    inset:0;
+    z-index:2;
+    display:block;
+  }
+
+  /* ---------- Hero ---------- */
+  main.hero{
+    position:relative;
+    z-index:5;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:90px 24px;
+  }
+
+  .badge-wrap{
+    position:relative;
+    width:min(220px, 40vw);
+    margin-bottom:6px;
+    opacity:0;
+    transform:translateY(18px) scale(.92);
+    animation:riseIn .9s cubic-bezier(.2,.8,.2,1) .15s forwards;
+  }
+  .badge-glow{
+    position:absolute;
+    inset:-30%;
+    background:radial-gradient(circle, rgba(240,180,41,0.35) 0%, rgba(240,180,41,0.08) 45%, transparent 72%);
+    filter:blur(6px);
+    z-index:-1;
+    animation:pulseGlow 4.5s ease-in-out infinite;
+  }
+  .orbit-ring{
+    position:absolute;
+    inset:-19%;
+    border:1px dashed rgba(240,180,41,0.38);
+    border-radius:50%;
+    z-index:-1;
+    animation:spin 16s linear infinite;
+  }
+  .orbit-ring::before{
+    content:'';
+    position:absolute;
+    top:-3px;
+    left:50%;
+    width:7px;
+    height:7px;
+    margin-left:-3.5px;
+    border-radius:50%;
+    background:var(--gold-light);
+    box-shadow:0 0 10px 3px rgba(240,180,41,0.7);
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .badge-wrap img{
+    width:100%;
+    display:block;
+    filter:drop-shadow(0 10px 30px rgba(0,0,0,0.55));
+    transform-style:preserve-3d;
+    will-change:transform;
+  }
+
+  /* ---------- Wordmark: Futuristic Cyber-Tech Competition Typography ---------- */
+  h1.wordmark {
+    line-height: 1.05;
+    margin: 30px auto 0;
+    opacity: 0;
+    transform: translateY(24px);
+    animation: riseIn .9s cubic-bezier(.2,.8,.2,1) .32s forwards;
+    position: relative;
+    user-select: none;
+    text-align: center;
+  }
+
+  /* Distinct Tech Typography for MATH (Default: Michroma Quantum Cyber) */
+  h1.wordmark .line1 {
+    display: inline-block;
+    font-family: 'Michroma', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 6.6vw, 5.4rem);
+    letter-spacing: 0.28em;
+    margin-right: -0.28em;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #ffffff 0%, #ffe4a3 30%, #f0b429 70%, #b8862a 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 35px rgba(240, 180, 41, 0.55)) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.85));
+    animation: techShimmer 5s ease-in-out infinite alternate;
+    transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Variant: Chakra Petch (Mecha / Cybernetic Stencil) */
+  h1.wordmark .line1.font-chakra {
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700;
+    font-size: clamp(3.2rem, 8.8vw, 6.8rem);
+    letter-spacing: 0.16em;
+    margin-right: -0.16em;
+  }
+
+  /* Variant: Audiowide (Retro-Futuristic Sci-Fi) */
+  h1.wordmark .line1.font-audiowide {
+    font-family: 'Audiowide', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2.8rem, 7.8vw, 6.0rem);
+    letter-spacing: 0.18em;
+    margin-right: -0.18em;
+  }
+
+  /* Variant: Teko (Monumental Esports Arena) */
+  h1.wordmark .line1.font-teko {
+    font-family: 'Teko', sans-serif;
+    font-weight: 700;
+    font-size: clamp(4.2rem, 11vw, 8.4rem);
+    letter-spacing: 0.12em;
+    margin-right: -0.12em;
+    line-height: 0.88;
+  }
+
+  /* Variant: Syne (Ultra-Modern Tech Conference) */
+  h1.wordmark .line1.font-syne {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(3.0rem, 8.0vw, 6.2rem);
+    letter-spacing: 0.14em;
+    margin-right: -0.14em;
+  }
+
+  /* PREMIER LEAGUE — Maintained in Orbitron with Wing Lines as requested */
+  h1.wordmark .line2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-family: 'Orbitron', 'Space Grotesk', sans-serif;
+    font-size: clamp(0.9rem, 2.2vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: 0.38em;
+    color: #eef2fb;
+    margin-top: 14px;
+    text-transform: uppercase;
+    text-shadow: 0 0 25px rgba(240, 180, 41, 0.3), 0 2px 12px rgba(0, 0, 0, 0.9);
+  }
+
+  h1.wordmark .line2::before,
+  h1.wordmark .line2::after {
+    content: '';
+    display: block;
+    height: 1px;
+    width: clamp(24px, 5vw, 60px);
+    background: linear-gradient(90deg, transparent, rgba(240, 180, 41, 0.65));
+  }
+  h1.wordmark .line2::after {
+    background: linear-gradient(90deg, rgba(240, 180, 41, 0.65), transparent);
+  }
+
+  @keyframes techShimmer {
+    0%   { filter: drop-shadow(0 0 25px rgba(240, 180, 41, 0.35)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7)); }
+    50%  { filter: drop-shadow(0 0 45px rgba(255, 228, 163, 0.65)) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.8)); }
+    100% { filter: drop-shadow(0 0 25px rgba(240, 180, 41, 0.35)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.7)); }
+  }
+
+  /* ── Interactive Tech Font Switcher Pill ── */
+  .font-switcher {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: rgba(8, 18, 38, 0.85);
+    border: 1px solid rgba(159, 176, 209, 0.25);
+    border-radius: 100px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(240, 180, 41, 0.15);
+  }
+
+  .fs-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--gold-light);
+    margin-right: 4px;
+  }
+
+  .fs-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 100px;
+    color: var(--paper-dim);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .fs-btn:hover {
+    color: var(--paper);
+    border-color: rgba(240, 180, 41, 0.4);
+    background: rgba(240, 180, 41, 0.08);
+  }
+
+  .fs-btn.active {
+    color: #081226;
+    background: var(--gold);
+    border-color: var(--gold);
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(240, 180, 41, 0.4);
+  }
+
+  /* ---------- Login button — ribbon banner, echoes the crest ---------- */
+  .login-outer{
+    margin-top:48px;
+    opacity:0;
+    transform:translateY(18px);
+    animation:riseIn .9s cubic-bezier(.2,.8,.2,1) .55s forwards, beacon 3.2s ease-in-out 1.3s infinite;
+
+    display:inline-block;
+    position:relative;
+    padding:3px;
+    clip-path:polygon(0% 50%, 7% 4%, 93% 4%, 100% 50%, 93% 96%, 7% 96%);
+    background:linear-gradient(180deg, var(--gold-light), var(--gold) 55%, var(--gold-dim));
+    cursor:pointer;
+    border:none;
+    outline:none;
+  }
+  .login-outer .login-face{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    clip-path:polygon(0% 50%, 7% 4%, 93% 4%, 100% 50%, 93% 96%, 7% 96%);
+    background:linear-gradient(180deg, var(--navy-mid), var(--navy-deep) 75%);
+    padding:18px 66px;
+    overflow:hidden;
+    transition:background .3s ease;
+  }
+  .login-outer .login-face::before{
+    content:'';
+    position:absolute;
+    top:-60%;
+    left:-70%;
+    width:35%;
+    height:220%;
+    background:linear-gradient(120deg, transparent, rgba(255,228,163,0.55), transparent);
+    transform:rotate(18deg);
+    transition:left .7s ease;
+    pointer-events:none;
+  }
+  .login-outer:hover .login-face::before{ left:135%; }
+  .login-outer:hover .login-face{ background:linear-gradient(180deg, #1a3763, var(--navy-mid) 80%); }
+
+  .login-label{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:1.02rem;
+    letter-spacing:0.14em;
+    color:var(--gold-light);
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+
+  .login-outer:hover{ transform:translateY(-3px); }
+  .login-outer:active{ transform:translateY(0px) scale(.98); }
+  .login-outer:focus-visible{
+    outline:3px solid #fff;
+    outline-offset:6px;
+  }
+
+  @keyframes riseIn{
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  @keyframes pulseGlow{
+    0%,100%{ opacity:.7; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.08); }
+  }
+  @keyframes beacon{
+    0%,100%{ filter:drop-shadow(0 10px 24px rgba(240,180,41,0.35)) drop-shadow(0 0 0 rgba(240,180,41,0.45)); }
+    50%{ filter:drop-shadow(0 10px 28px rgba(240,180,41,0.5)) drop-shadow(0 0 16px rgba(240,180,41,0.35)); }
+  }
+
+  @media (max-width: 640px){
+    main.hero{ padding:70px 24px; }
+    .login-outer .login-face{ padding:16px 42px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001s !important; animation-iteration-count:1 !important; transition-duration:0.001s !important; }
+  }
