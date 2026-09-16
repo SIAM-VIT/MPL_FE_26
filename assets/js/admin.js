@@ -6,9 +6,18 @@ const API = 'http://localhost:8000';
   // ──────────────────────────────────────────────────────────────────────────
   // AUTH
   // ──────────────────────────────────────────────────────────────────────────
-  function adminLogin() {
+  async function adminLogin() {
     const pass = document.getElementById('admin-pass').value.trim();
     if (!pass) return;
+    const r = await fetch(API + '/api/admin/teams', {
+      headers: { 'admin-passcode': pass, 'Content-Type': 'application/json' }
+    });
+    if (r.status !== 200) {
+      document.getElementById('login-err').classList.add('show');
+      toast('Invalid admin passcode (Default: admin123)', 'error');
+      return;
+    }
+    document.getElementById('login-err').classList.remove('show');
     adminPasscode = pass;
     sessionStorage.setItem('mpl_admin_pass', pass);
     document.getElementById('login-screen').style.display = 'none';
@@ -101,7 +110,12 @@ const API = 'http://localhost:8000';
   // ──────────────────────────────────────────────────────────────────────────
   async function loadDashboard() {
     const { status, data } = await apiGet('/api/admin/teams');
-    if (status !== 200) { toast('Failed to load teams: ' + (data.detail || status), 'error'); return; }
+    if (status === 401) {
+      adminLogout();
+      toast('Admin session expired or invalid passcode. Please log in.', 'error');
+      return;
+    }
+    if (status !== 200) { toast('Failed to load teams: ' + (data?.detail || status), 'error'); return; }
 
     allTeams = data;
     document.getElementById('nav-badge-teams').textContent = data.length;
@@ -137,11 +151,33 @@ const API = 'http://localhost:8000';
           <td style="color:${t.extra_time_seconds>0?'#34d399':'var(--muted)'}">
             ${extraTime}
           </td>
-          <td>${t.main_question_id ? `<code>#${t.main_question_id}</code>` : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>
+            <button class="btn btn-expand" style="color:#fbbf24;border-color:rgba(240,180,41,0.5)" onclick="resetTeamTimer(${t.id}, '${escHtml(t.name)}')">↻ Reset Time</button>
+          </td>
         </tr>`;
     }).join('');
 
     populateTeamSelects();
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // RESET TIMER
+  // ──────────────────────────────────────────────────────────────────────────
+  async function resetTeamTimer(teamId, teamName) {
+    const confirmMessage = teamId === 0
+      ? 'Are you sure you want to reset the main question timer for ALL teams? This will restart the clock with full fresh time.'
+      : `Are you sure you want to reset the main question timer for "${teamName}"? This will restart the clock with full fresh time.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    const { status, data } = await apiPost(`/api/admin/teams/${teamId}/reset-timer`, {});
+    if (status === 200) {
+      toast(teamId === 0 ? 'All team timers reset successfully!' : `Timer for "${teamName}" reset successfully!`, 'success');
+      loadDashboard();
+      loadTeams();
+    } else {
+      toast('Failed to reset timer: ' + (data?.detail || status), 'error');
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -155,7 +191,7 @@ const API = 'http://localhost:8000';
 
     const tbody = document.getElementById('teams-table-body');
     if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">No teams yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">No teams yet.</td></tr>';
       return;
     }
     tbody.innerHTML = data.map(t => `
@@ -166,6 +202,9 @@ const API = 'http://localhost:8000';
         <td>${t.timer_start_time
           ? '<span class="badge badge-green">Active</span>'
           : '<span class="badge" style="color:var(--muted);background:rgba(100,116,139,.08);border:1px solid var(--border)">Pending</span>'}</td>
+        <td>
+          <button class="btn btn-expand" style="color:#fbbf24;border-color:rgba(240,180,41,0.5)" onclick="resetTeamTimer(${t.id}, '${escHtml(t.name)}')">↻ Reset Time</button>
+        </td>
       </tr>`).join('');
     populateTeamSelects();
   }

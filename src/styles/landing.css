@@ -1,6 +1,6 @@
-@font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url('../fonts/bebas-neue-latin.woff2'), url('../bebas-neue-latin.woff2') format('woff2')}
-    @font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url('../fonts/space-grotesk-latin.woff2'), url('../space-grotesk-latin.woff2') format('woff2')}
-    @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400 500;font-display:swap;src:url('../fonts/jetbrains-mono-latin.woff2'), url('../jetbrains-mono-latin.woff2') format('woff2')}
+
+    
+    
 
 :root{
     --void:#04060d;
@@ -19,11 +19,11 @@
   html,body{
     margin:0;
     padding:0;
-    height:100%;
+    min-height:100%;
     background:var(--void);
     color:var(--paper);
     font-family:'Space Grotesk', sans-serif;
-    overflow:hidden;
+    overflow-x:hidden;
   }
 
   body{
@@ -39,7 +39,7 @@
     transform:translate3d(0,0,0) scale(1.06);
     transition:transform .5s cubic-bezier(.2,.8,.2,1);
     will-change:transform;
-    background-image: url('../images/cosmic-background.jpg');
+    background-image: url('/assets/images/cosmic-background.jpg');
 
     background-size:cover;
     background-position:center;
@@ -191,9 +191,9 @@
     text-transform: uppercase;
     background: linear-gradient(180deg, #ffffff 0%, #ffe4a3 30%, #f0b429 70%, #b8862a 100%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: transparent !important;
     background-clip: text;
-    color: transparent;
+    color: transparent !important;
   }
 
   /* PREMIER LEAGUE — Maintained in Orbitron with Wing Lines */

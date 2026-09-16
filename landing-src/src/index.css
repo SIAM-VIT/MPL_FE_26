@@ -1,0 +1,210 @@
+:root {
+  /* Three-tier palette: Raw Primitives */
+  --raw-void-950: #070913;
+  --raw-void-900: #0b0f20;
+  --raw-void-800: #111836;
+  --raw-void-700: #1b2552;
+  --raw-starlight: #f8fafc;
+  --raw-stellar-400: #94a3b8;
+  --raw-stellar-500: #64748b;
+  --raw-gold-500: #eab308;
+  --raw-gold-300: #fde047;
+  --raw-cyan-500: #06b6d4;
+  --raw-teal-400: #2dd4bf;
+
+  /* Semantic roles */
+  --bg-cosmic: var(--raw-void-950);
+  --emblem-gold: var(--raw-gold-500);
+  --emblem-gold-light: var(--raw-gold-300);
+  --ambient-cyan: var(--raw-cyan-500);
+  --ambient-teal: var(--raw-teal-400);
+  --hud-text: var(--raw-starlight);
+  --hud-muted: var(--raw-stellar-400);
+
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-cosmic);
+  color: var(--hud-text);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 2200vh Continuous Scroll Track */
+.scroll-container {
+  position: relative;
+  width: 100%;
+  height: 2200vh;
+  pointer-events: auto;
+}
+
+/* Single Sticky Stage */
+.sticky-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 3D Canvas wrapper */
+.canvas-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+/* HUD Overlay Layer */
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px;
+}
+
+@media (max-width: 640px) {
+  .hud-layer {
+    padding: 16px;
+  }
+}
+
+/* Monospace telemetry styles */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ambient-cyan);
+}
+
+.mono-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--raw-starlight);
+}
+
+/* Gold typography */
+.gold-glow-text {
+  color: var(--raw-gold-300);
+  text-shadow: 0 0 20px rgba(234, 179, 8, 0.45);
+}
+
+/* Glassmorphic card styling */
+.glass-panel {
+  background: rgba(11, 15, 32, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(7, 9, 19, 0.6);
+}
+
+.glass-panel-gold {
+  background: rgba(17, 24, 54, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  box-shadow: 0 0 30px -5px rgba(234, 179, 8, 0.2);
+}
+
+/* Scroll indicator pill */
+.scroll-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--raw-stellar-400);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(11, 15, 32, 0.5);
+}
+
+/* Custom cosmic scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--raw-void-950);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--raw-gold-500), var(--raw-cyan-500));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--raw-gold-300), var(--raw-teal-400));
+}
+
+/* Text selection */
+::selection {
+  background: rgba(234, 179, 8, 0.35);
+  color: var(--raw-starlight);
+}
+
+/* Glass panel hover enhancement */
+.glass-panel {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-panel:hover {
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(7, 9, 19, 0.8), 0 0 15px rgba(6, 182, 212, 0.08);
+}
+
+/* Animated shimmer border for glass-panel-gold */
+@keyframes shimmerBorder {
+  0% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 0 30px -5px rgba(234, 179, 8, 0.2); }
+  50% { border-color: rgba(234, 179, 8, 0.55); box-shadow: 0 0 40px -5px rgba(234, 179, 8, 0.35); }
+  100% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 0 30px -5px rgba(234, 179, 8, 0.2); }
+}
+
+.glass-panel-gold {
+  animation: shimmerBorder 4s ease-in-out infinite;
+}
+
+/* Scroll indicator animation */
+@keyframes pulseDown {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(6px); opacity: 1; }
+}
+
+.scroll-indicator-chevron {
+  animation: pulseDown 2s ease-in-out infinite;
+}
+
+/* Ensure no horizontal overflow at 390px */
+@media (max-width: 390px) {
+  * {
+    max-width: 100vw;
+  }
+}

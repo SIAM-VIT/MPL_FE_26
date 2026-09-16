@@ -132,9 +132,12 @@
 
       <!-- Leaderboard -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
           <h3><svg class="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 4H6v7a6 6 0 0 0 12 0V4z"></path></svg> Live Leaderboard</h3>
-          <button class="btn-refresh" onclick="loadDashboard()">↻ Refresh</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-expand" style="color:#fbbf24;border-color:rgba(240,180,41,0.5)" onclick="resetTeamTimer(0, 'ALL Teams')">↻ Reset All Timers</button>
+            <button class="btn-refresh" onclick="loadDashboard()">↻ Refresh</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0">
           <div class="tbl-wrap">
@@ -146,7 +149,7 @@
                   <th>Points</th>
                   <th>Timer Status</th>
                   <th>Extra Time</th>
-                  <th>Main Q</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="leaderboard-body">
@@ -190,18 +193,27 @@
 
         <!-- Team list -->
         <div class="card">
-          <div class="card-header">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <h3>All Teams</h3>
-            <button class="btn-refresh" onclick="loadTeams()">↻ Refresh</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-expand" style="color:#fbbf24;border-color:rgba(240,180,41,0.5)" onclick="resetTeamTimer(0, 'ALL Teams')">↻ Reset All Timers</button>
+              <button class="btn-refresh" onclick="loadTeams()">↻ Refresh</button>
+            </div>
           </div>
           <div class="card-body" style="padding:0">
             <div class="tbl-wrap">
               <table>
                 <thead>
-                  <tr><th>ID</th><th>Name</th><th>Points</th><th>Status</th></tr>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Points</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
                 </thead>
                 <tbody id="teams-table-body">
-                  <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
+                  <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
                 </tbody>
               </table>
             </div>

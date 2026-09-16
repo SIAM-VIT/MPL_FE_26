@@ -235,7 +235,8 @@
       max-width:1680px; margin:0 auto; padding:20px 24px 40px; align-items:start;
     }
     @media (max-width: 900px) { .arena-grid { grid-template-columns: 1fr; } }
-    .questions-col, .problem-col { display:flex; flex-direction:column; gap:18px; }
+    .questions-col, .problem-col { display: flex; flex-direction: column; gap: 18px; }
+
 
     .panel {
       background:var(--card); border:1px solid var(--border);

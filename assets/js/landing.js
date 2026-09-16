@@ -213,38 +213,9 @@
 
   /* ----- Arena entry: the hub (index.html) owns login — go straight there ----- */
   var openBtn = document.getElementById('openLogin');
-  openBtn.addEventListener('click', function(){
-    window.location.href = 'index.html';  // same folder under :8000/ui, :5500, or file://
-  });
-  /* ---------- Interactive Math Font Switcher ---------- */
-  var fontBtns = document.querySelectorAll('.fs-btn');
-  var mathLine = document.querySelector('h1.wordmark .line1');
-
-  function setMathFont(fontName) {
-    if (!mathLine) return;
-    mathLine.classList.remove('font-chakra', 'font-audiowide', 'font-teko', 'font-syne');
-    if (fontName && fontName !== 'michroma') {
-      mathLine.classList.add('font-' + fontName);
-    }
-    fontBtns.forEach(function(btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-font') === fontName);
+  if (openBtn) {
+    openBtn.addEventListener('click', function(){
+      window.location.href = 'index.html';  // same folder under :8000/ui, :5500, or file://
     });
-    try {
-      localStorage.setItem('mpl_math_font', fontName);
-    } catch(e) {}
   }
-
-  fontBtns.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var font = this.getAttribute('data-font');
-      setMathFont(font);
-    });
-  });
-
-  try {
-    var savedFont = localStorage.getItem('mpl_math_font');
-    if (savedFont) {
-      setMathFont(savedFont);
-    }
-  } catch(e) {}
 })();

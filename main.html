@@ -70,15 +70,18 @@
       </div>
 
       <div class="arena-grid">
-        <!-- Left: Questions list + Problem statement -->
-        <div class="editor-col">
+        <!-- Questions list -->
+        <div class="questions-col">
           <div class="panel">
             <div class="panel-head">
               <span class="panel-title">Questions</span>
             </div>
             <div class="q-tabs" id="q-tabs"></div>
           </div>
+        </div>
 
+        <!-- Problem Statement -->
+        <div class="problem-col">
           <div class="panel">
             <div class="panel-head">
               <span class="panel-title">Problem Statement</span>
@@ -92,37 +95,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Right: Code Editor + Results -->
-        <div class="editor-col">
-          <div class="panel">
-            <div class="editor-bar">
-              <select id="lang-select"></select>
-              <span class="spacer"></span>
-              <span class="hint">Ctrl+Enter to submit</span>
-              <button class="btn btn-run" id="btn-run">▶ Run Samples</button>
-              <button class="btn btn-submit" id="btn-submit">⚡ Submit</button>
-            </div>
-            <div id="monaco-host"></div>
-            <textarea id="code-fallback" spellcheck="false" style="display:none"></textarea>
-            <div class="editor-loading" id="editor-status">Loading editor…</div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <span class="panel-title">Results</span>
-              <span class="hint" id="last-run"></span>
-            </div>
-            <div id="verdict" style="display:none" class="verdict">
-              <span class="verdict-dot" id="v-dot"></span>
-              <span class="verdict-text" id="v-text"></span>
-              <span class="verdict-stats" id="v-stats"></span>
-            </div>
-            <div class="results-list" id="results">
-              <div class="empty">Run the samples or submit your solution to see results.</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -130,7 +102,6 @@
   <div class="toast" id="toast"></div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/cosmic-interaction.js"></script>
 </body>
