@@ -1,32 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 import { BackgroundLayers } from '../components/common/BackgroundLayers';
 
 export const BoostPage = () => {
-  const { team, loginTeam, logoutTeam } = useAuth();
+  const navigate = useNavigate();
+  const { team, updateTeamData, loginTeam, logoutTeam } = useAuth();
+  const { addToast } = useToast();
+
   const [teamName, setTeamName] = useState('');
   const [passcode, setPasscode] = useState('');
   const [errMsg, setErrMsg] = useState('');
-  const [boostQuestions, setBoostQuestions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [activeBoost, setActiveBoost] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [extraTime, setExtraTime] = useState(team?.extra_time_seconds || 0);
 
-  const fetchBoosts = async () => {
-    if (!team) return;
-    setLoading(true);
+  // Volunteer Verification Modal
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [volunteerPass, setVolunteerPass] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyErr, setVerifyErr] = useState('');
+  const [verifyResult, setVerifyResult] = useState(null);
+
+  const fetchActiveBoost = async (showSpinner = false) => {
+    if (!team?.id) return;
+    if (showSpinner) setLoading(true);
     try {
-      const res = await api.getTeamStatus(team.id);
-      setBoostQuestions(res?.assigned_time_boosts || []);
-    } catch (_) {
+      const [res, statusRes] = await Promise.allSettled([
+        api.getActiveBoost(team.id),
+        api.getTeamStatus(team.id),
+      ]);
+
+      if (res.status === 'fulfilled') {
+        setActiveBoost(res.value?.active_boost || null);
+      }
+      if (statusRes.status === 'fulfilled' && statusRes.value?.team) {
+        setExtraTime(statusRes.value.team.extra_time_seconds || 0);
+      }
+    } catch (err) {
+      // ignore status fetch failure
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (team) fetchBoosts();
-  }, [team]);
+    if (team?.id) {
+      fetchActiveBoost(true);
+      const interval = setInterval(() => fetchActiveBoost(false), 10000);
+      return () => clearInterval(interval);
+    }
+  }, [team?.id]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,6 +66,53 @@ export const BoostPage = () => {
     } catch (err) {
       setErrMsg(err.message || 'Login failed. Please check your credentials.');
     }
+  };
+
+  const handleVerifySubmit = async (e) => {
+    e.preventDefault();
+    setVerifyErr('');
+    if (!volunteerPass.trim()) {
+      setVerifyErr('Please enter the volunteer verification passcode.');
+      return;
+    }
+    if (!activeBoost) return;
+
+    setIsVerifying(true);
+    try {
+      const res = await api.verifyBoost(team.id, activeBoost.id, volunteerPass.trim());
+      setVerifyResult(res);
+      if (res.extra_time_seconds != null) {
+        setExtraTime(res.extra_time_seconds);
+      }
+      addToast(res.message || 'Bonus time successfully awarded!', 'success');
+      await fetchActiveBoost(false);
+    } catch (err) {
+      setVerifyErr(err.message || 'Verification failed. Invalid passcode.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleCancelBoost = async () => {
+    if (!activeBoost) return;
+    if (!window.confirm('Are you sure you want to forfeit and cancel this time boost? You will not earn bonus time for it.')) {
+      return;
+    }
+    try {
+      await api.cancelBoost(team.id, activeBoost.id);
+      addToast('Time boost cancelled.', 'info');
+      setActiveBoost(null);
+      await fetchActiveBoost();
+    } catch (err) {
+      addToast(err.message || 'Failed to cancel boost.', 'error');
+    }
+  };
+
+  const diffBadgeClass = (diff) => {
+    const d = (diff || '').toUpperCase();
+    if (d === 'EASY') return 'badge-easy';
+    if (d === 'HARD') return 'badge-hard';
+    return 'badge-medium';
   };
 
   return (
@@ -57,7 +130,7 @@ export const BoostPage = () => {
                 </svg>
               </div>
               <h2>Bonus Bidding</h2>
-              <p className="login-sub">Login to see your assigned time-boost questions and earn extra minutes.</p>
+              <p className="login-sub">Login to see your assigned time-boost question and earn extra countdown minutes.</p>
               <form onSubmit={handleLogin}>
                 <div className="inp-wrap">
                   <label htmlFor="team-name">Team Name</label>
@@ -81,7 +154,7 @@ export const BoostPage = () => {
                   />
                 </div>
                 <button type="submit" className="btn-login" id="login-btn">
-                  View My Boosts
+                  Enter Bidding Arena
                 </button>
               </form>
               {errMsg && <div className="err-msg show" id="err-msg">{errMsg}</div>}
@@ -103,62 +176,267 @@ export const BoostPage = () => {
                     {team.name}
                   </span>
                 </div>
-                <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>Time Boost Questions</span>
-                <button className="btn-logout" onClick={logoutTeam}>
-                  Logout
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Link to="/main" style={{ color: 'var(--muted)', fontSize: '.84rem', textDecoration: 'none' }}>
+                    Main Arena ↗
+                  </Link>
+                  <button className="btn-logout" onClick={logoutTeam}>
+                    Logout
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="wrap">
-              <div className="section-head">
-                <h1>Bonus Bidding</h1>
-                <p>Solve these questions to add bonus time to your main question countdown.</p>
+            <div className="wrap" style={{ maxWidth: '880px', margin: '0 auto', padding: '24px' }}>
+              <div className="section-head" style={{ padding: '20px 0 16px' }}>
+                <h1 style={{ fontSize: '2.2rem', marginBottom: '4px' }}>Bonus Bidding Arena</h1>
+                <p style={{ color: 'var(--muted)', fontSize: '.92rem' }}>
+                  Solve your bid question, demonstrate your code to a volunteer, and claim bonus countdown time!
+                </p>
               </div>
 
-              <div className="time-earned-bar" id="teb" style={{ display: 'flex' }}>
-                <div className="teb-icon">
-                  <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="14" r="8" />
-                    <line x1="12" y1="2" x2="12" y2="6" />
-                    <line x1="12" y1="14" x2="12" y2="10" />
-                    <line x1="12" y1="14" x2="15" y2="14" />
-                  </svg>
-                </div>
-                <div className="teb-text">
-                  <h3>Total Bonus Time Earned</h3>
-                  <p>Awarded after admin reviews your submission</p>
-                </div>
-                <div className="teb-val" id="teb-val">+{team.extra_time_seconds || 0}s</div>
-              </div>
-
-              <div id="boost-list-wrap">
-                {boostQuestions.length === 0 ? (
-                  <div className="empty-state" id="empty-state" style={{ display: 'block' }}>
-                    <div className="e-icon">
-                      <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-                      </svg>
-                    </div>
-                    <h3>No boost questions assigned</h3>
-                    <p>The admin hasn't assigned any time-boost questions to your team yet.<br />Check back soon!</p>
+              {/* Total time earned bar */}
+              <div className="time-earned-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', background: 'rgba(16,185,129,.10)', border: '1px solid rgba(16,185,129,.25)', borderRadius: '16px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16,185,129,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6ee7b7' }}>
+                    ⚡
                   </div>
-                ) : (
-                  <div className="boost-list" id="boost-list">
-                    {boostQuestions.map((qid) => (
-                      <div key={qid} className="boost-card">
-                        <h3>Time Boost #{qid}</h3>
-                        <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>Question ID: {qid}</p>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>Total Bonus Time Earned</h3>
+                    <p style={{ color: 'var(--muted)', fontSize: '.8rem' }}>Added directly to your 90-minute countdown clock</p>
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>
+                  +{extraTime || team.extra_time_seconds || 0}s
+                </div>
+              </div>
+
+              {/* Active Boost Card / Empty State */}
+              {loading ? (
+                <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted)' }}>
+                  Loading time boost status…
+                </div>
+              ) : activeBoost ? (
+                <div className="q-card" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '20px', overflow: 'hidden', backdropFilter: 'blur(20px)', boxShadow: '0 20px 50px rgba(0,0,0,.4)' }}>
+                  <div className="q-header" style={{ padding: '24px 28px', borderBottom: '1px solid var(--border)', background: 'rgba(240,180,41,.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                        <span className="badge badge-boost" style={{ background: 'rgba(240,180,41,.15)', color: '#ffe4a3', border: '1px solid rgba(240,180,41,.25)', padding: '3px 10px', borderRadius: '100px', fontSize: '.75rem', fontWeight: 700 }}>
+                          TIME BOOST
+                        </span>
+                        <span className={`badge ${diffBadgeClass(activeBoost.difficulty)}`} style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '.75rem', fontWeight: 700 }}>
+                          {activeBoost.difficulty || 'MEDIUM'}
+                        </span>
                       </div>
-                    ))}
+                      <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff' }}>
+                        {activeBoost.title}
+                      </h2>
+                    </div>
+
+                    <div style={{ textAlign: 'right', background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.25)', padding: '10px 18px', borderRadius: '14px' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>
+                        +{activeBoost.reward_minutes} MINS
+                      </div>
+                      <div style={{ fontSize: '.7rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
+                        Bonus Reward (+{activeBoost.reward_seconds}s)
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div style={{ padding: '28px' }}>
+                    <div style={{ fontSize: '.75rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>
+                      Challenge Description
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '.95rem', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                      {activeBoost.description}
+                    </div>
+
+                    {activeBoost.sample_tests && activeBoost.sample_tests.length > 0 && (
+                      <div style={{ marginBottom: '28px' }}>
+                        <div style={{ fontSize: '.75rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>
+                          Sample Test Cases
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {activeBoost.sample_tests.map((tc, idx) => (
+                            <div key={idx} style={{ background: 'rgba(0,0,0,.35)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 16px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px', fontSize: '.82rem', fontFamily: "'JetBrains Mono', monospace", marginBottom: '4px' }}>
+                                <span style={{ color: 'var(--muted)', fontWeight: 600 }}>INPUT:</span>
+                                <span style={{ color: '#a5f3fc', whiteSpace: 'pre-wrap' }}>{tc.stdin || '<empty>'}</span>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px', fontSize: '.82rem', fontFamily: "'JetBrains Mono', monospace' " }}>
+                                <span style={{ color: 'var(--muted)', fontWeight: 600 }}>EXPECTED:</span>
+                                <span style={{ color: '#86efac', whiteSpace: 'pre-wrap' }}>{tc.expected_output || '<empty>'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                      <button
+                        type="button"
+                        onClick={handleCancelBoost}
+                        style={{ background: 'transparent', border: '1px solid rgba(239,68,68,.3)', color: '#fca5a5', padding: '12px 20px', borderRadius: '12px', fontSize: '.88rem', fontWeight: 600, cursor: 'pointer', transition: 'all .2s' }}
+                      >
+                        ✕ Forfeit / Cancel Boost
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-login"
+                        onClick={() => {
+                          setVerifyErr('');
+                          setVolunteerPass('');
+                          setShowVerifyModal(true);
+                        }}
+                        style={{ padding: '12px 28px', fontSize: '.92rem', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        ★ Volunteer Verification & Submit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Empty state when no boost is assigned */
+                <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '24px', padding: '60px 40px', textAlign: 'center', backdropFilter: 'blur(20px)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '14px' }}>⏱️</div>
+                  <h3 style={{ fontSize: '1.6rem', color: '#fff', marginBottom: '8px' }}>
+                    No Active Time Boost
+                  </h3>
+                  <p style={{ color: 'var(--muted)', fontSize: '.92rem', maxWidth: '520px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+                    You currently have no active bonus bidding question assigned. Request your event admin or bidding coordinator to assign your team an <strong>Easy (+5m)</strong>, <strong>Medium (+10m)</strong>, or <strong>Hard (+15m)</strong> challenge!
+                  </p>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      onClick={fetchActiveBoost}
+                      className="btn-logout"
+                      style={{ padding: '10px 22px', fontSize: '.88rem' }}
+                    >
+                      🔄 Refresh Status
+                    </button>
+                    <Link to="/hub" className="btn-login" style={{ padding: '10px 24px', fontSize: '.88rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                      ← Back to Hub
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      {/* ── VOLUNTEER VERIFICATION MODAL ── */}
+      {showVerifyModal && (
+        <div className="modal-overlay" onClick={() => !isVerifying && setShowVerifyModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="modal-close-btn"
+              onClick={() => setShowVerifyModal(false)}
+              disabled={isVerifying}
+            >
+              ✕
+            </button>
+
+            {verifyResult ? (
+              /* Success Celebration */
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '3.2rem', marginBottom: '10px' }}>⚡🎉</div>
+                <h2 style={{ fontSize: '1.6rem', color: '#6ee7b7', marginBottom: '8px' }}>
+                  Bonus Time Awarded!
+                </h2>
+                <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: '20px' }}>
+                  Your time boost has been verified by the volunteer.
+                </p>
+
+                <div className="total-award-banner" style={{ background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.3)', borderRadius: '16px', padding: '18px', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, letterSpacing: '.08em', marginBottom: '4px' }}>Time Added to Clock</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>
+                    +{verifyResult.reward_minutes} MINUTES (+{verifyResult.reward_seconds}s)
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px 18px', borderRadius: '12px', marginBottom: '24px' }}>
+                  <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>Total Cumulative Bonus Time: </span>
+                  <strong style={{ color: '#ffe4a3', fontSize: '1.1rem' }}>+{verifyResult.extra_time_seconds}s</strong>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <Link
+                    to="/hub"
+                    className="btn-logout"
+                    style={{ padding: '12px', textAlign: 'center', textDecoration: 'none' }}
+                  >
+                    Back to Hub
+                  </Link>
+                  <Link
+                    to="/main"
+                    className="btn-login"
+                    style={{ padding: '12px', textAlign: 'center', textDecoration: 'none' }}
+                  >
+                    Go to Main Arena →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              /* Passcode Form */
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🛡️</div>
+                  <h2 style={{ fontSize: '1.5rem', marginBottom: '6px' }}>
+                    Volunteer Verification
+                  </h2>
+                  <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>
+                    Show your solved solution to the volunteer. Enter the volunteer passcode to claim <strong>+{activeBoost?.reward_minutes} minutes</strong> on your team clock.
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifySubmit}>
+                  <div className="inp-wrap">
+                    <label htmlFor="volunteer-pass">Volunteer / Admin Passcode</label>
+                    <input
+                      type="password"
+                      id="volunteer-pass"
+                      placeholder="Enter verification passcode"
+                      autoComplete="off"
+                      autoFocus
+                      value={volunteerPass}
+                      onChange={(e) => setVolunteerPass(e.target.value)}
+                    />
+                  </div>
+
+                  {verifyErr && (
+                    <div className="err-msg show" style={{ marginBottom: '16px' }}>
+                      {verifyErr}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
+                    <button
+                      type="button"
+                      className="btn-logout"
+                      style={{ padding: '12px' }}
+                      onClick={() => setShowVerifyModal(false)}
+                      disabled={isVerifying}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-login"
+                      style={{ padding: '12px' }}
+                      disabled={isVerifying}
+                    >
+                      {isVerifying ? 'Verifying…' : 'Confirm & Claim Time'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,15 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { BackgroundLayers } from '../components/common/BackgroundLayers';
 
 export const HubPage = () => {
-  const [showToast, setShowToast] = useState(false);
-
-  const handleLockedClick = () => {
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <BackgroundLayers />
@@ -23,7 +16,7 @@ export const HubPage = () => {
             Mini Programming<br />League
           </h1>
           <p className="subtitle">
-            Compete, solve, and dominate. Choose your challenge mode below to get started.
+            Compete, solve, and dominate. Choose your arena below to get started.
           </p>
         </header>
 
@@ -38,13 +31,13 @@ export const HubPage = () => {
               <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="2" r="2" />
               </svg>
             </div>
             <span className="card-tag">Main Event</span>
             <h2>Main Question</h2>
             <p className="desc">
-              The primary 90-minute challenge. Login to start your countdown and receive your team's assigned question.
+              The primary 90-minute challenge. Login to start your countdown and receive your team's assigned question set.
             </p>
             <div className="card-cta">
               Get Started <span className="arrow">→</span>
@@ -68,8 +61,13 @@ export const HubPage = () => {
             </div>
           </Link>
 
-          {/* Card 3: Challenge Mode */}
-          <div className="card card-locked" id="btn-challenge" onClick={handleLockedClick} style={{ cursor: 'pointer' }}>
+          {/* Card 3: 1v1 Challenge Mode */}
+          <Link
+            to="/challenge"
+            className="card card-boost"
+            id="btn-challenge"
+            style={{ textDecoration: 'none' }}
+          >
             <div className="card-icon">
               <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
@@ -82,36 +80,21 @@ export const HubPage = () => {
                 <line x1="5" y1="21" x2="3" y2="19" />
               </svg>
             </div>
-            <span className="card-tag">Head-to-Head</span>
-            <h2>Challenge Mode</h2>
+            <span className="card-tag" style={{ background: 'rgba(240,180,41,0.15)', color: '#ffe4a3', borderColor: 'rgba(240,180,41,0.3)' }}>
+              ⚔️ 1v1 Head-to-Head
+            </span>
+            <h2>Challenge Arena</h2>
             <p className="desc">
-              Go head-to-head against other teams for massive point bonuses. Only available when the admin activates a challenge session.
+              Go head-to-head in 1v1 battles. First team to solve and verify wins 100 points transferred directly from the opponent!
             </p>
             <div className="card-cta">
-              <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              &nbsp;Locked &nbsp;<span className="arrow">—</span>
+              Enter 1v1 Arena <span className="arrow">→</span>
             </div>
-            <div className="lock-banner">
-              <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              &nbsp;Admin must start a challenge session first
-            </div>
-          </div>
+          </Link>
         </div>
-      </div>
-
-      <div className={`toast ${showToast ? 'show' : ''}`} id="toast">
-        <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        &nbsp;Challenge is locked — wait for admin to start a session!
       </div>
     </div>
   );
 };
+
+

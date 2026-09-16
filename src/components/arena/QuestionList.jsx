@@ -10,7 +10,7 @@ export const QuestionList = ({ questions, selectedId, onSelectQuestion }) => {
 
         let typeBadgeClass = 'badge-debugging';
         if (q.sub_type === 'MATH') typeBadgeClass = 'badge-math';
-        if (q.sub_type === 'LEETCODE') typeBadgeClass = 'badge-leetcode';
+        if (q.sub_type === 'LEETCODE' || q.sub_type === 'CODING') typeBadgeClass = 'badge-coding';
 
         return (
           <button

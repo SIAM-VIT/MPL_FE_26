@@ -24,34 +24,61 @@ export const AdminPage = () => {
   const [newTeamPass, setNewTeamPass] = useState('');
   const [teamCreateOk, setTeamCreateOk] = useState('');
   const [teamCreateErr, setTeamCreateErr] = useState('');
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+  const [expandedTeamId, setExpandedTeamId] = useState(null);
 
   // Assign boost form
   const [boostTeamId, setBoostTeamId] = useState('');
-  const [boostQId, setBoostQId] = useState('');
+  const [boostDifficulty, setBoostDifficulty] = useState('MEDIUM');
   const [boostOk, setBoostOk] = useState('');
   const [boostErr, setBoostErr] = useState('');
 
-  // Challenge form
+  // 1v1 / 1v1v1 Challenge state
   const [chTeam1, setChTeam1] = useState('');
   const [chTeam2, setChTeam2] = useState('');
   const [chTeam3, setChTeam3] = useState('');
   const [chQId, setChQId] = useState('');
   const [chOk, setChOk] = useState('');
   const [chErr, setChErr] = useState('');
+  const [challengeSessions, setChallengeSessions] = useState([]);
+  const [challengeQuestions, setChallengeQuestions] = useState([]);
+  const [isStartingChallenge, setIsStartingChallenge] = useState(false);
 
   const fetchAdminData = async () => {
     if (!isAdmin) return;
     try {
-      const [tData, qData, sData, lData] = await Promise.all([
+      const results = await Promise.allSettled([
         api.getTeams(),
         api.getAdminQuestions(),
         api.getSubmissions(50),
         api.getLeaderboard(),
+        api.getChallengeSessions(),
+        api.getChallengeQuestions(),
       ]);
-      setTeams(tData || []);
-      setQuestions(qData || []);
-      setSubmissions(sData || []);
-      setLeaderboard(lData || []);
+
+      if (results[0].status === 'fulfilled') setTeams(results[0].value || []);
+      if (results[1].status === 'fulfilled') {
+        const qList = results[1].value || [];
+        setQuestions(qList);
+      }
+      if (results[2].status === 'fulfilled') setSubmissions(results[2].value || []);
+      if (results[3].status === 'fulfilled') setLeaderboard(results[3].value || []);
+      if (results[4].status === 'fulfilled') setChallengeSessions(results[4].value || []);
+      if (results[5].status === 'fulfilled') {
+        const cqList = results[5].value || [];
+        setChallengeQuestions(cqList);
+        if (!chQId && cqList.length > 0) {
+          setChQId(cqList[0].id);
+        }
+      }
+
+      const unauthorized = results.find(
+        (r) => r.status === 'rejected' && (r.reason?.status === 401 || r.reason?.message?.includes('401'))
+      );
+      if (unauthorized) {
+        logoutAdmin();
+        addToast('Admin session expired or invalid passcode. Please log in.', 'error');
+      }
     } catch (err) {
       if (err.status === 401) {
         logoutAdmin();
@@ -82,21 +109,44 @@ export const AdminPage = () => {
     }
   };
 
-  const handleCreateTeam = async () => {
+  const handleCreateTeam = async (e) => {
+    if (e) e.preventDefault();
     setTeamCreateOk('');
     setTeamCreateErr('');
-    if (!newTeamName || !newTeamPass) {
+    const name = newTeamName.trim();
+    const pass = newTeamPass.trim();
+    if (!name || !pass) {
       setTeamCreateErr('Team name and passcode are required.');
+      addToast('Please enter both Team Name and Passcode', 'error');
+      return;
+    }
+    setIsCreatingTeam(true);
+    try {
+      await api.createTeam({ name, passcode: pass });
+      setTeamCreateOk(`Team "${name}" created successfully!`);
+      addToast(`Team "${name}" created!`, 'success');
+      setNewTeamName('');
+      setNewTeamPass('');
+      await fetchAdminData();
+    } catch (err) {
+      const msg = err.message || 'Failed to create team.';
+      setTeamCreateErr(msg);
+      addToast(msg, 'error');
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
+  const handleDeleteTeam = async (teamId, teamName) => {
+    if (!window.confirm(`Are you sure you want to delete "${teamName}" (#${teamId})? All their question progress and submissions will be removed.`)) {
       return;
     }
     try {
-      await api.createTeam({ name: newTeamName, passcode: newTeamPass });
-      setTeamCreateOk(`Team "${newTeamName}" created successfully!`);
-      setNewTeamName('');
-      setNewTeamPass('');
+      await api.deleteTeam(teamId);
+      addToast(`Team "${teamName}" deleted successfully`, 'success');
       fetchAdminData();
     } catch (err) {
-      setTeamCreateErr(err.message || 'Failed to create team.');
+      addToast(err.message || 'Failed to delete team', 'error');
     }
   };
 
@@ -157,13 +207,16 @@ export const AdminPage = () => {
   const handleAssignBoost = async () => {
     setBoostOk('');
     setBoostErr('');
-    if (!boostTeamId || !boostQId) {
-      setBoostErr('Select both a team and a question.');
+    if (!boostTeamId) {
+      setBoostErr('Select a team to assign a time boost.');
       return;
     }
     try {
-      await api.assignBoost({ team_id: parseInt(boostTeamId), question_id: parseInt(boostQId) });
-      setBoostOk(`Assigned question #${boostQId} to team #${boostTeamId}`);
+      const res = await api.assignRandomBoost(parseInt(boostTeamId), boostDifficulty);
+      const q = res?.question;
+      const rewardMins = (q?.reward_seconds || 600) / 60;
+      setBoostOk(`Assigned ${q?.difficulty || boostDifficulty} Boost: "${q?.title}" (+${rewardMins}m) to team #${boostTeamId}`);
+      addToast('Random boost question assigned successfully!', 'success');
       fetchAdminData();
     } catch (err) {
       setBoostErr(err.message || 'Failed to assign boost.');
@@ -174,20 +227,54 @@ export const AdminPage = () => {
     setChOk('');
     setChErr('');
     if (!chTeam1 || !chTeam2 || !chQId) {
-      setChErr('Select at least Team 1, Team 2, and a Question.');
+      setChErr('Select Team 1, Team 2, and a Challenge problem.');
+      addToast('Please select Team 1, Team 2, and a Challenge problem', 'error');
       return;
     }
+    const teamIds = [chTeam1, chTeam2];
+    if (chTeam3) {
+      teamIds.push(chTeam3);
+    }
+    if (new Set(teamIds).size !== teamIds.length) {
+      setChErr('All selected competing teams must be distinct.');
+      addToast('All selected competing teams must be distinct', 'error');
+      return;
+    }
+    setIsStartingChallenge(true);
     try {
-      await api.createChallenge({
+      const isTriangular = Boolean(chTeam3);
+      const res = await api.createChallenge({
         question_id: parseInt(chQId),
         team1_id: parseInt(chTeam1),
         team2_id: parseInt(chTeam2),
         team3_id: chTeam3 ? parseInt(chTeam3) : null,
       });
-      setChOk('Challenge session started successfully!');
-      fetchAdminData();
+      const matchLabel = isTriangular ? '1v1v1 Triangular Match Started (100 pts stake)!' : '1v1 Challenge Match Started (100 pts stake)!';
+      setChOk(res.message || matchLabel);
+      addToast(res.message || matchLabel, 'success');
+      setChTeam1('');
+      setChTeam2('');
+      setChTeam3('');
+      await fetchAdminData();
     } catch (err) {
-      setChErr(err.message || 'Failed to start challenge.');
+      const msg = err.message || 'Failed to start challenge match.';
+      setChErr(msg);
+      addToast(msg, 'error');
+    } finally {
+      setIsStartingChallenge(false);
+    }
+  };
+
+  const handleResolveChallenge = async (sessionId, winnerTeamId, winnerName) => {
+    if (!window.confirm(`Declare "${winnerName}" as the WINNER of match #${sessionId}? This will award +100 pts to "${winnerName}" and deduct 100 pts from the opponent.`)) {
+      return;
+    }
+    try {
+      const res = await api.resolveChallenge(sessionId, { winner_team_id: winnerTeamId });
+      addToast(res.message || `Match #${sessionId} resolved: ${winnerName} won 100 pts!`, 'success');
+      await fetchAdminData();
+    } catch (err) {
+      addToast(err.message || 'Failed to resolve match', 'error');
     }
   };
 
@@ -195,12 +282,12 @@ export const AdminPage = () => {
   const leaderTeam = leaderboard[0]?.team_name || leaderboard[0]?.name || '—';
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
+    <div className="page" style={{ position: 'relative', minHeight: '100vh', zIndex: 1 }}>
       <BackgroundLayers />
 
       {!isAdmin ? (
         /* ══ LOGIN SCREEN ══════════════════════════════════════════════ */
-        <div id="login-screen">
+        <div id="login-screen" style={{ position: 'relative', zIndex: 10 }}>
           <div className="login-box">
             <div className="login-icon">
               <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -237,7 +324,7 @@ export const AdminPage = () => {
         </div>
       ) : (
         /* ══ APP SHELL ════════════════════════════════════════════════ */
-        <div id="app" style={{ display: 'flex' }}>
+        <div id="app" style={{ display: 'flex', position: 'relative', zIndex: 10 }}>
           {/* ── Sidebar ── */}
           <aside className="sidebar">
             <div className="sidebar-logo">
@@ -329,7 +416,12 @@ export const AdminPage = () => {
                     <line x1="5" y1="21" x2="3" y2="19" />
                   </svg>
                 </span>
-                &nbsp;Challenge
+                &nbsp;1v1 Challenge
+                {challengeSessions.filter(s => s.status === 'ONGOING').length > 0 && (
+                  <span className="ni-badge" style={{ background: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>
+                    {challengeSessions.filter(s => s.status === 'ONGOING').length} LIVE
+                  </span>
+                )}
               </div>
 
               <div
@@ -507,29 +599,42 @@ export const AdminPage = () => {
                       <h3>Create Team</h3>
                     </div>
                     <div className="card-body">
-                      {teamCreateOk && <div className="alert alert-success">{teamCreateOk}</div>}
-                      {teamCreateErr && <div className="alert alert-error">{teamCreateErr}</div>}
-                      <div className="form-row">
-                        <label>Team Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Team Delta"
-                          value={newTeamName}
-                          onChange={(e) => setNewTeamName(e.target.value)}
-                        />
-                      </div>
-                      <div className="form-row">
-                        <label>Passcode</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. delta123"
-                          value={newTeamPass}
-                          onChange={(e) => setNewTeamPass(e.target.value)}
-                        />
-                      </div>
-                      <button className="btn btn-gold" onClick={handleCreateTeam}>
-                        Create Team
-                      </button>
+                      {teamCreateOk && <div className="alert alert-success" style={{ display: 'block' }}>{teamCreateOk}</div>}
+                      {teamCreateErr && <div className="alert alert-error" style={{ display: 'block' }}>{teamCreateErr}</div>}
+                      <form onSubmit={handleCreateTeam}>
+                        <div className="form-row">
+                          <label htmlFor="create-team-name">Team Name</label>
+                          <input
+                            id="create-team-name"
+                            type="text"
+                            placeholder="e.g. Team Delta"
+                            value={newTeamName}
+                            onChange={(e) => setNewTeamName(e.target.value)}
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                        <div className="form-row">
+                          <label htmlFor="create-team-pass">Passcode</label>
+                          <input
+                            id="create-team-pass"
+                            type="text"
+                            placeholder="e.g. delta123"
+                            value={newTeamPass}
+                            onChange={(e) => setNewTeamPass(e.target.value)}
+                            autoComplete="off"
+                            required
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="btn btn-gold"
+                          disabled={isCreatingTeam}
+                          style={{ width: '100%', justifyContent: 'center', cursor: 'pointer', padding: '12px' }}
+                        >
+                          {isCreatingTeam ? 'Creating Team...' : 'Create Team'}
+                        </button>
+                      </form>
                     </div>
                   </div>
 
@@ -552,41 +657,170 @@ export const AdminPage = () => {
                         <table>
                           <thead>
                             <tr>
-                              <th>ID</th>
-                              <th>Name</th>
-                              <th>Passcode</th>
-                              <th>Points</th>
-                              <th>Actions</th>
+                              <th style={{ width: '50px' }}>ID</th>
+                              <th style={{ width: '120px' }}>Name</th>
+                              <th style={{ width: '90px' }}>Passcode</th>
+                              <th>Questions / Progress</th>
+                              <th style={{ width: '80px' }}>Points</th>
+                              <th style={{ width: '220px' }}>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {teams.map((t) => (
-                              <tr key={t.id}>
-                                <td>#{t.id}</td>
-                                <td><strong>{t.name}</strong></td>
-                                <td><code>{t.passcode}</code></td>
-                                <td className="pts">{t.points}</td>
-                                <td>
-                                  <button className="btn btn-expand" onClick={() => handleAddTime(t.id, 300)} style={{ marginRight: '6px' }}>
-                                    +5m
-                                  </button>
-                                  <button className="btn btn-expand" onClick={() => handleAddTime(t.id, 600)} style={{ marginRight: '6px' }}>
-                                    +10m
-                                  </button>
-                                  <button
-                                    className="btn btn-expand"
-                                    onClick={() => handleResetTimer(t.id, t.name)}
-                                    style={{ marginRight: '6px', color: '#fbbf24', borderColor: 'rgba(240,180,41,0.5)' }}
-                                    title="Reset main question clock"
-                                  >
-                                    ↻ Reset Time
-                                  </button>
-                                  <button className="btn btn-expand" onClick={() => handleResetToken(t.id)} style={{ color: '#fca5a5', borderColor: 'rgba(239,68,68,0.4)' }}>
-                                    Reset Token
-                                  </button>
+                            {teams.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--muted)' }}>
+                                  No teams found. Create a new team on the left!
                                 </td>
                               </tr>
-                            ))}
+                            ) : (
+                              teams.map((t) => (
+                                <tr key={t.id}>
+                                  <td>#{t.id}</td>
+                                  <td><strong style={{ color: '#fff' }}>{t.name}</strong></td>
+                                  <td><code>{t.passcode}</code></td>
+                                  <td>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.85rem' }}>
+                                          {t.question_set_name || (t.started ? 'Set Assigned' : 'Unallocated')}
+                                        </span>
+                                        <span
+                                          style={{
+                                            fontSize: '0.72rem',
+                                            fontWeight: 700,
+                                            padding: '2px 8px',
+                                            borderRadius: '100px',
+                                            background: t.solved_count === t.total_questions ? 'rgba(16,185,129,0.15)' : t.solved_count > 0 ? 'rgba(240,180,41,0.15)' : 'rgba(255,255,255,0.06)',
+                                            color: t.solved_count === t.total_questions ? '#10b981' : t.solved_count > 0 ? '#ffe4a3' : 'var(--muted)',
+                                            border: `1px solid ${t.solved_count === t.total_questions ? 'rgba(16,185,129,0.3)' : t.solved_count > 0 ? 'rgba(240,180,41,0.3)' : 'rgba(255,255,255,0.1)'}`
+                                          }}
+                                        >
+                                          {t.solved_count}/{t.total_questions} Solved
+                                        </span>
+                                        {t.boost_questions && t.boost_questions.length > 0 && (
+                                          <span
+                                            style={{
+                                              fontSize: '0.68rem',
+                                              padding: '2px 7px',
+                                              borderRadius: '100px',
+                                              fontWeight: 700,
+                                              background: 'rgba(240,180,41,0.12)',
+                                              color: '#ffe4a3',
+                                              border: '1px solid rgba(240,180,41,0.25)'
+                                            }}
+                                            title={t.boost_questions.map(b => `${b.title} (${b.status})`).join(', ')}
+                                          >
+                                            ⚡ Boost {t.boost_questions[0].status === 'SOLVED' ? 'Earned' : 'Active'}
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="btn btn-expand"
+                                          onClick={() => setExpandedTeamId(expandedTeamId === t.id ? null : t.id)}
+                                          style={{ padding: '2px 8px', fontSize: '0.68rem', minHeight: '22px' }}
+                                        >
+                                          {expandedTeamId === t.id ? '▲ Less' : '▼ Details'}
+                                        </button>
+                                      </div>
+
+                                      {/* Compact 3-Problem Indicator Bar */}
+                                      {t.main_questions && t.main_questions.length > 0 && (
+                                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                          {t.main_questions.map((q) => {
+                                            const isDone = q.status === 'SOLVED';
+                                            const isInProg = q.status === 'IN_PROGRESS';
+                                            return (
+                                              <span
+                                                key={q.question_id}
+                                                style={{
+                                                  fontSize: '0.68rem',
+                                                  padding: '2px 7px',
+                                                  borderRadius: '5px',
+                                                  fontWeight: 600,
+                                                  background: isDone
+                                                    ? 'rgba(16, 185, 129, 0.15)'
+                                                    : isInProg
+                                                    ? 'rgba(245, 158, 11, 0.15)'
+                                                    : 'rgba(255, 255, 255, 0.05)',
+                                                  color: isDone ? '#10b981' : isInProg ? '#f59e0b' : 'var(--muted)',
+                                                  border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.3)' : isInProg ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px'
+                                                }}
+                                                title={`${q.category}: ${q.title} (${q.status})`}
+                                              >
+                                                <span>{q.category === 'DEBUGGING' ? 'Debug' : q.category === 'MATH' ? 'Math' : 'Coding'}</span>
+                                                <span style={{ fontSize: '0.75rem' }}>{isDone ? '✓' : isInProg ? '⏳' : '—'}</span>
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Expandable Details Drawer */}
+                                      {expandedTeamId === t.id && (
+                                        <div style={{ marginTop: '4px', padding: '10px 12px', background: 'rgba(0,0,0,0.35)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.78rem', maxWidth: '400px' }}>
+                                          <div style={{ fontWeight: 700, color: 'var(--gold-light)', marginBottom: '4px' }}>
+                                            Problem Breakdown:
+                                          </div>
+                                          {t.main_questions && t.main_questions.map((q) => (
+                                            <div key={q.question_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: 'var(--text-secondary)' }}>
+                                              <span>• {q.category}: <strong style={{ color: '#fff' }}>{q.title}</strong></span>
+                                              <span style={{ color: q.status === 'SOLVED' ? '#10b981' : 'var(--muted)', fontWeight: 600 }}>
+                                                {q.status} {q.best_score ? `(${q.best_score} pts)` : ''}
+                                              </span>
+                                            </div>
+                                          ))}
+                                          {t.boost_questions && t.boost_questions.length > 0 && (
+                                            <>
+                                              <div style={{ fontWeight: 700, color: '#6ee7b7', marginTop: '6px', marginBottom: '2px' }}>
+                                                Bonus Time Boosts:
+                                              </div>
+                                              {t.boost_questions.map((b) => (
+                                                <div key={b.question_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                                                  <span>⚡ [{b.difficulty}] {b.title}</span>
+                                                  <span style={{ color: b.status === 'SOLVED' ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+                                                    {b.status} (+{b.reward_seconds / 60}m)
+                                                  </span>
+                                                </div>
+                                              ))}
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="pts">{t.points}</td>
+                                  <td style={{ whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                      <button className="btn btn-expand" onClick={() => handleAddTime(t.id, 300)} title="Add 5 minutes">
+                                        +5m
+                                      </button>
+                                      <button className="btn btn-expand" onClick={() => handleAddTime(t.id, 600)} title="Add 10 minutes">
+                                        +10m
+                                      </button>
+                                      <button
+                                        className="btn btn-expand"
+                                        onClick={() => handleResetTimer(t.id, t.name)}
+                                        style={{ color: '#fbbf24', borderColor: 'rgba(240,180,41,0.5)' }}
+                                        title="Reset main question clock"
+                                      >
+                                        ↻ Reset
+                                      </button>
+                                      <button
+                                        className="btn btn-expand"
+                                        onClick={() => handleDeleteTeam(t.id, t.name)}
+                                        style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.4)' }}
+                                        title="Delete team"
+                                      >
+                                        🗑
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -642,32 +876,36 @@ export const AdminPage = () => {
             {activePanel === 'assign' && (
               <div className="panel active" id="panel-assign">
                 <div className="section-hdr">
-                  <h1>Assign Boost</h1>
-                  <p>Assign time-boost tasks to individual teams.</p>
+                  <h1>Bidding / Time Boost Allocation</h1>
+                  <p>Select a team and difficulty to assign a random bonus time question.</p>
                 </div>
-                <div className="card" style={{ maxWidth: '500px' }}>
+                <div className="card" style={{ maxWidth: '540px' }}>
                   <div className="card-body">
                     {boostOk && <div className="alert alert-success">{boostOk}</div>}
                     {boostErr && <div className="alert alert-error">{boostErr}</div>}
                     <div className="form-row">
-                      <label>Team</label>
+                      <label>Select Team</label>
                       <select value={boostTeamId} onChange={(e) => setBoostTeamId(e.target.value)}>
                         <option value="">Select a team…</option>
                         {teams.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
+                          <option key={t.id} value={t.id}>#{t.id} - {t.name} (Bonus: +{t.extra_time_seconds || 0}s)</option>
                         ))}
                       </select>
                     </div>
                     <div className="form-row">
-                      <label>Question</label>
-                      <select value={boostQId} onChange={(e) => setBoostQId(e.target.value)}>
-                        <option value="">Select a question…</option>
-                        {questions.map((q) => (
-                          <option key={q.id} value={q.id}>#{q.id} {q.title}</option>
-                        ))}
+                      <label>Select Difficulty & Bonus Reward</label>
+                      <select value={boostDifficulty} onChange={(e) => setBoostDifficulty(e.target.value)}>
+                        <option value="EASY">Easy — +5 Minutes (+300s)</option>
+                        <option value="MEDIUM">Medium — +10 Minutes (+600s)</option>
+                        <option value="HARD">Hard — +15 Minutes (+900s)</option>
                       </select>
                     </div>
-                    <button className="btn btn-gold" onClick={handleAssignBoost}>Assign Boost</button>
+                    <p style={{ color: 'var(--muted)', fontSize: '.84rem', margin: '14px 0 18px', lineHeight: 1.5 }}>
+                      A random question matching this difficulty will be allocated to the team. The participant will only see this assigned question on their Boost page.
+                    </p>
+                    <button className="btn btn-gold" onClick={handleAssignBoost} style={{ width: '100%', justifyContent: 'center' }}>
+                      ⚡ Assign Random Boost Question
+                    </button>
                   </div>
                 </div>
               </div>
@@ -677,50 +915,231 @@ export const AdminPage = () => {
             {activePanel === 'challenge' && (
               <div className="panel active" id="panel-challenge">
                 <div className="section-hdr">
-                  <h1>Challenge Arena</h1>
-                  <p>Launch live multiplayer head-to-head battles.</p>
+                  <h1>Challenge Arena (1v1 & 1v1v1)</h1>
+                  <p>Pair two or three teams for a high-stakes battle. The winning team earns 100 points taken from the losing team(s).</p>
                 </div>
-                <div className="card" style={{ maxWidth: '560px' }}>
+
+                {/* ── CREATE BATTLE CARD ── */}
+                <div className="card" style={{ marginBottom: '24px' }}>
+                  <div className="card-header">
+                    <h3>⚔️ Launch Head-to-Head / Triangular Match</h3>
+                  </div>
                   <div className="card-body">
                     {chOk && <div className="alert alert-success">{chOk}</div>}
                     {chErr && <div className="alert alert-error">{chErr}</div>}
-                    <div className="form-row">
-                      <label>Team 1 (Required)</label>
-                      <select value={chTeam1} onChange={(e) => setChTeam1(e.target.value)}>
-                        <option value="">Select Team 1…</option>
-                        {teams.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', alignItems: 'center' }}>
+                      <div className="form-row" style={{ margin: 0 }}>
+                        <label>Team 1 (Required)</label>
+                        <select value={chTeam1} onChange={(e) => setChTeam1(e.target.value)}>
+                          <option value="">Select Team 1…</option>
+                          {teams.map((t) => (
+                            <option key={t.id} value={t.id} disabled={t.id.toString() === chTeam2 || t.id.toString() === chTeam3}>
+                              #{t.id} - {t.name} ({t.points || 0} pts)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ textAlign: 'center', paddingTop: '16px' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--gold-light)', padding: '4px 10px', borderRadius: '100px', background: 'rgba(240,180,41,0.12)', border: '1px solid rgba(240,180,41,0.3)' }}>
+                          VS
+                        </span>
+                      </div>
+
+                      <div className="form-row" style={{ margin: 0 }}>
+                        <label>Team 2 (Required)</label>
+                        <select value={chTeam2} onChange={(e) => setChTeam2(e.target.value)}>
+                          <option value="">Select Team 2…</option>
+                          {teams.map((t) => (
+                            <option key={t.id} value={t.id} disabled={t.id.toString() === chTeam1 || t.id.toString() === chTeam3}>
+                              #{t.id} - {t.name} ({t.points || 0} pts)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ textAlign: 'center', paddingTop: '16px' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-secondary)', padding: '4px 10px', borderRadius: '100px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                          VS
+                        </span>
+                      </div>
+
+                      <div className="form-row" style={{ margin: 0 }}>
+                        <label>Team 3 (Optional — 1v1v1)</label>
+                        <select value={chTeam3} onChange={(e) => setChTeam3(e.target.value)}>
+                          <option value="">(None - 1v1 Match)</option>
+                          {teams.map((t) => (
+                            <option key={t.id} value={t.id} disabled={t.id.toString() === chTeam1 || t.id.toString() === chTeam2}>
+                              #{t.id} - {t.name} ({t.points || 0} pts)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="form-row">
-                      <label>Team 2 (Required)</label>
-                      <select value={chTeam2} onChange={(e) => setChTeam2(e.target.value)}>
-                        <option value="">Select Team 2…</option>
-                        {teams.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-row">
-                      <label>Team 3 (Optional)</label>
-                      <select value={chTeam3} onChange={(e) => setChTeam3(e.target.value)}>
-                        <option value="">(None)</option>
-                        {teams.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-row">
-                      <label>Challenge Problem</label>
+
+                    <div className="form-row" style={{ marginTop: '16px' }}>
+                      <label>Challenge Problem (Only Tagged CHALLENGE Problems)</label>
                       <select value={chQId} onChange={(e) => setChQId(e.target.value)}>
-                        <option value="">Select problem…</option>
-                        {questions.map((q) => (
-                          <option key={q.id} value={q.id}>#{q.id} {q.title}</option>
-                        ))}
+                        <option value="">Select challenge problem…</option>
+                        {challengeQuestions.length > 0 ? (
+                          challengeQuestions.map((q) => (
+                            <option key={q.id} value={q.id}>
+                              #{q.id} [{q.difficulty || 'HARD'}] {q.title}
+                            </option>
+                          ))
+                        ) : (
+                          questions.map((q) => (
+                            <option key={q.id} value={q.id}>
+                              #{q.id} [{q.difficulty || 'MEDIUM'}] {q.title}
+                            </option>
+                          ))
+                        )}
                       </select>
                     </div>
-                    <button className="btn btn-gold" onClick={handleStartChallenge}>Start Challenge Session</button>
+
+                    <div style={{ padding: '10px 14px', background: 'rgba(240,180,41,0.08)', border: '1px solid rgba(240,180,41,0.2)', borderRadius: '8px', marginBottom: '18px', fontSize: '0.84rem', color: '#ffe4a3', lineHeight: 1.5 }}>
+                      ⚡ <strong>Challenge Arena Rules:</strong> The winning team earns <strong>100 points</strong> deducted from the losing team(s). When one team finishes and submits first with the volunteer passcode, all opponents will immediately see <em>"Team [Winner] already done!"</em>.
+                    </div>
+
+                    <button
+                      className="btn btn-gold"
+                      onClick={handleStartChallenge}
+                      disabled={isStartingChallenge}
+                      style={{ width: '100%', justifyContent: 'center', fontSize: '0.95rem' }}
+                    >
+                      {isStartingChallenge ? <span className="spinner" /> : chTeam3 ? '⚔️ Launch 1v1v1 Triangular Match' : '⚔️ Launch 1v1 Battle'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── MATCHES HISTORY & REAL-TIME STATUS ── */}
+                <div className="card">
+                  <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3>Challenge Battles & Live Matches</h3>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                      Total Matches: {challengeSessions.length}
+                    </span>
+                  </div>
+                  <div className="card-body" style={{ padding: 0 }}>
+                    <div className="tbl-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th style={{ width: '60px' }}>Match</th>
+                            <th>Competing Teams</th>
+                            <th>Problem</th>
+                            <th>Status</th>
+                            <th>Winner / Points Transfer</th>
+                            <th style={{ width: '280px' }}>Admin Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {challengeSessions.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: 'var(--muted)' }}>
+                                No challenge matches created yet. Pair teams above to launch a battle!
+                              </td>
+                            </tr>
+                          ) : (
+                            challengeSessions.map((s) => {
+                              const isOngoing = s.status === 'ONGOING';
+                              return (
+                                <tr key={s.id}>
+                                  <td><strong>#{s.id}</strong></td>
+                                  <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <strong style={{ color: s.winner_team_id === s.team1_id ? '#10b981' : '#fff' }}>
+                                        {s.team1_name}
+                                      </strong>
+                                      <span style={{ color: 'var(--gold-light)', fontWeight: 800, fontSize: '0.72rem' }}>VS</span>
+                                      <strong style={{ color: s.winner_team_id === s.team2_id ? '#10b981' : '#fff' }}>
+                                        {s.team2_name}
+                                      </strong>
+                                      {s.team3_id && (
+                                        <>
+                                          <span style={{ color: 'var(--gold-light)', fontWeight: 800, fontSize: '0.72rem' }}>VS</span>
+                                          <strong style={{ color: s.winner_team_id === s.team3_id ? '#10b981' : '#fff' }}>
+                                            {s.team3_name}
+                                          </strong>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span style={{ color: 'var(--text-secondary)' }}>{s.question_title}</span>
+                                  </td>
+                                  <td>
+                                    <span
+                                      style={{
+                                        display: 'inline-block',
+                                        padding: '3px 9px',
+                                        borderRadius: '100px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        background: isOngoing ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                        color: isOngoing ? '#f87171' : '#34d399',
+                                        border: `1px solid ${isOngoing ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                                      }}
+                                    >
+                                      {isOngoing ? (s.team3_id ? '🔥 LIVE 1v1v1' : '🔥 LIVE 1v1') : '🏆 FINISHED'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {s.winner_name ? (
+                                      <span style={{ color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>
+                                        🏆 {s.winner_name} (+100 pts)
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: 'var(--muted)', fontSize: '0.82rem' }}>
+                                        100 pts at stake
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {isOngoing ? (
+                                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                        <button
+                                          type="button"
+                                          className="btn btn-expand"
+                                          onClick={() => handleResolveChallenge(s.id, s.team1_id, s.team1_name)}
+                                          title={`Declare ${s.team1_name} as winner (+100 pts)`}
+                                          style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.4)', fontSize: '0.72rem', padding: '3px 7px' }}
+                                        >
+                                          ✓ {s.team1_name}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-expand"
+                                          onClick={() => handleResolveChallenge(s.id, s.team2_id, s.team2_name)}
+                                          title={`Declare ${s.team2_name} as winner (+100 pts)`}
+                                          style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.4)', fontSize: '0.72rem', padding: '3px 7px' }}
+                                        >
+                                          ✓ {s.team2_name}
+                                        </button>
+                                        {s.team3_id && (
+                                          <button
+                                            type="button"
+                                            className="btn btn-expand"
+                                            onClick={() => handleResolveChallenge(s.id, s.team3_id, s.team3_name)}
+                                            title={`Declare ${s.team3_name} as winner (+100 pts)`}
+                                            style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.4)', fontSize: '0.72rem', padding: '3px 7px' }}
+                                          >
+                                            ✓ {s.team3_name}
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>Resolved</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>

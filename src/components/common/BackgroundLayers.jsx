@@ -243,16 +243,16 @@ export const BackgroundLayers = ({ isLanding = false }) => {
   }, [isLanding]);
 
   return (
-    <>
-      <div className="bg-photo" aria-hidden="true" />
-      <div className="bg-tint" aria-hidden="true" />
-      <div className="aurora">
-        <span className="a1" />
-        <span className="a2" />
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+      <div className="bg-photo" aria-hidden="true" style={{ pointerEvents: 'none' }} />
+      <div className="bg-tint" aria-hidden="true" style={{ pointerEvents: 'none' }} />
+      <div className="aurora" style={{ pointerEvents: 'none' }}>
+        <span className="a1" style={{ pointerEvents: 'none' }} />
+        <span className="a2" style={{ pointerEvents: 'none' }} />
       </div>
-      <div className="cursor-glow" id="cursorGlow" />
-      <canvas id="stars" ref={canvasRef} />
-      <div className="grid-bg" />
-    </>
+      <div className="cursor-glow" id="cursorGlow" style={{ pointerEvents: 'none' }} />
+      <canvas id="stars" ref={canvasRef} style={{ pointerEvents: 'none', position: 'fixed', inset: 0 }} />
+      <div className="grid-bg" style={{ pointerEvents: 'none' }} />
+    </div>
   );
 };

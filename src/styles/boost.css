@@ -55,7 +55,7 @@
     .back-link a:hover { color:var(--cyan-light); }
 
     /* ── Boost View ── */
-    #boost-view { display:none;padding-bottom:60px; }
+    #boost-view { display:block;padding-bottom:60px; }
 
     /* Topbar */
     .topbar {
@@ -185,5 +185,5 @@
     @keyframes auroraDrift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,8vh) scale(1.15)}}
     @keyframes auroraDrift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,-6vh) scale(1.1)}}
     .cursor-glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle 460px at var(--mx,50%) var(--my,40%),rgba(240,180,41,.10),transparent 70%);}
-    canvas#stars{position:fixed;inset:0;z-index:0;display:block;}
+    canvas#stars{position:fixed;inset:0;z-index:0;display:block;pointer-events:none !important;}
     h1,h2,.q-title,.login-box h2,.section-head h1,.modal-card h2,.bc-title,.page-title,.panel-title{font-family:'Bebas Neue',sans-serif;letter-spacing:.03em;}
