@@ -1,6 +1,6 @@
 // Centralized API client for MPL backend
 
-const BASE_URL = '';
+const BASE_URL = 'https://mpl-26-be.onrender.com';
 
 async function request(path, options = {}) {
   const headers = {
