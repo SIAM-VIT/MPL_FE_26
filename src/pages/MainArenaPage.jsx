@@ -21,10 +21,10 @@ export const MainArenaPage = () => {
   const [selectedQuestionId, setSelectedQuestionId] = useState(null);
   const [timerSeconds, setTimerSeconds] = useState(null);
 
-  // Volunteer Final Submit Modal state
+  // Individual Volunteer Submit Modal state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [volunteerPass, setVolunteerPass] = useState('');
-  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitResult, setSubmitResult] = useState(null);
 
@@ -74,9 +74,7 @@ export const MainArenaPage = () => {
   const isAllSolved =
     questions.length > 0 && questions.every((q) => q.status === 'SOLVED');
 
-  const remainingMins = Math.max(0, Math.floor((timerSeconds || 0) / 60));
-  const estTimeBonus = remainingMins * 10;
-  const estTotalAward = 1000 + estTimeBonus;
+  const solvedCount = questions.filter((q) => q.status === 'SOLVED').length;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -95,26 +93,27 @@ export const MainArenaPage = () => {
     }
   };
 
-  const handleFinalSubmit = async (e) => {
+  const handleVerifyQuestionSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
     if (!volunteerPass.trim()) {
       setSubmitError('Please enter the volunteer verification passcode.');
       return;
     }
-    setIsSubmittingFinal(true);
+    if (!selectedQuestion) return;
+    setIsSubmitting(true);
     try {
-      const res = await api.finalSubmit(volunteerPass.trim());
+      const res = await api.verifyMainQuestion(selectedQuestion.id, volunteerPass.trim());
       setSubmitResult(res);
       if (res.team_points != null) {
         updateTeamData({ points: res.team_points });
       }
-      addToast('Challenge successfully verified & submitted! Points awarded.', 'success');
+      addToast(res.message || 'Question successfully verified! Points awarded.', 'success');
       await fetchQuestions();
     } catch (err) {
       setSubmitError(err.message || 'Verification failed. Invalid passcode.');
     } finally {
-      setIsSubmittingFinal(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -133,27 +132,31 @@ export const MainArenaPage = () => {
       ? 'timer-yellow'
       : 'timer-red';
 
+  const getSubtypeLabel = (q) => {
+    if (!q) return 'MAIN';
+    if (q.sub_type === 'DEBUGGING' || q.id <= 120) return 'DEBUGGING (2,000 PTS)';
+    if (q.sub_type === 'MATH' || (q.id > 120 && q.id <= 220)) return 'MATH (2,000 PTS)';
+    return 'CODING (3,000 PTS)';
+  };
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <BackgroundLayers />
 
       <div className="page">
-        {/* ── LOGIN VIEW ── */}
         {!team ? (
+          /* ── LOGIN VIEW ── */
           <div id="login-view">
             <div className="login-box">
               <div className="login-icon">
                 <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="6" />
-                  <circle cx="12" cy="12" r="2" />
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
               </div>
-              <h2>Main Arena</h2>
+              <h2>Main Coding Arena</h2>
               <p className="login-sub">
-                Enter your team credentials to start your countdown.
+                Enter your assigned Team Credentials to unlock your 3-question set.
               </p>
-
               <form onSubmit={handleLogin}>
                 <div className="inp-wrap">
                   <label htmlFor="team-name">Team Name</label>
@@ -167,7 +170,7 @@ export const MainArenaPage = () => {
                   />
                 </div>
                 <div className="inp-wrap">
-                  <label htmlFor="passcode">Passcode</label>
+                  <label htmlFor="passcode">Team Passcode</label>
                   <input
                     type="password"
                     id="passcode"
@@ -176,14 +179,11 @@ export const MainArenaPage = () => {
                     onChange={(e) => setPasscode(e.target.value)}
                   />
                 </div>
-
                 <button type="submit" className="btn-login" id="btn-login" disabled={isLoggingIn}>
                   {isLoggingIn ? 'Authenticating…' : 'Start Challenge →'}
                 </button>
               </form>
-
-              {loginErr && <div className="err-msg show" id="login-err">{loginErr}</div>}
-
+              {loginErr && <div className="err-msg show" id="err-msg">{loginErr}</div>}
               <div className="back-link">
                 <Link to="/hub">← Back to Hub</Link>
               </div>
@@ -191,21 +191,20 @@ export const MainArenaPage = () => {
           </div>
         ) : (
           /* ── ARENA VIEW ── */
-          <div id="arena-view" style={{ display: 'block' }}>
-            {/* Sticky topbar */}
+          <div id="arena-view">
             <div className="topbar">
               <div className="topbar-inner">
                 <div className="team-pill">
                   <div className="avatar" id="avatar">
                     {team.name ? team.name[0].toUpperCase() : 'T'}
                   </div>
-                  <span className="tname" id="tname">
+                  <span className="tname" id="team-name-disp">
                     {team.name}
                   </span>
                 </div>
 
-                <div className="timer-block">
-                  <div id="timer" className={timerClass}>
+                <div className="timer-pill" id="timer-pill">
+                  <div className={`timer-digits ${timerClass}`} id="timer-digits">
                     {formatTimer(timerSeconds)}
                   </div>
                   <div className="timer-label">Time Remaining</div>
@@ -215,24 +214,19 @@ export const MainArenaPage = () => {
                   <span className="stat-pill">
                     Points <b id="points">{team.points ?? 0}</b>
                   </span>
-                  {(team.extra_time_seconds ?? 0) > 0 && (
-                    <span className="extra-badge" id="extra-badge">
-                      +{team.extra_time_seconds}s bonus
-                    </span>
-                  )}
-
-                  {/* Final Submit Button */}
-                  <button
-                    className={`btn-final-submit ${isAllSolved ? 'completed' : ''}`}
-                    id="btn-final-submit"
-                    onClick={() => {
-                      setSubmitError('');
-                      setVolunteerPass('');
-                      setShowSubmitModal(true);
+                  <span
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '100px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      background: solvedCount === questions.length && questions.length > 0 ? 'rgba(16,185,129,0.2)' : 'rgba(240,180,41,0.15)',
+                      color: solvedCount === questions.length && questions.length > 0 ? '#34d399' : '#ffe4a3',
+                      border: `1px solid ${solvedCount === questions.length && questions.length > 0 ? 'rgba(16,185,129,0.35)' : 'rgba(240,180,41,0.3)'}`,
                     }}
                   >
-                    {isAllSolved ? '✓ Verified & Completed' : '★ Final Volunteer Submit'}
-                  </button>
+                    {solvedCount}/{questions.length} Solved
+                  </span>
 
                   <button className="btn-logout" id="btn-logout" onClick={logoutTeam}>
                     Logout
@@ -246,8 +240,8 @@ export const MainArenaPage = () => {
               <div className="questions-col">
                 <div className="panel">
                   <div className="panel-head">
-                    <span className="panel-title">Questions</span>
-                    <span className="hint">{questions.length} problem{questions.length !== 1 ? 's' : ''}</span>
+                    <span className="panel-title">Assigned Problems</span>
+                    <span className="hint">{questions.length} problems</span>
                   </div>
                   <div className="q-tabs" id="q-tabs">
                     {questions.map((q) => {
@@ -264,12 +258,14 @@ export const MainArenaPage = () => {
                             <span className={`badge badge-${(q.sub_type === 'LEETCODE' ? 'coding' : q.sub_type)?.toLowerCase() || 'main'}`}>
                               {q.sub_type === 'LEETCODE' ? 'CODING' : (q.sub_type || 'MAIN')}
                             </span>
-                            <span className="pts">{isSolved ? '✓ SOLVED' : `${q.points} pts`}</span>
+                            <span className="pts" style={{ color: isSolved ? '#34d399' : '#ffe4a3', fontWeight: 700 }}>
+                              {isSolved ? '✓ SOLVED' : `${q.points || (q.id <= 220 ? 2000 : 3000)} pts`}
+                            </span>
                           </div>
                           <div className="q-tab-title">{q.title}</div>
                           <div className="q-tab-meta">
-                            <span>{q.difficulty}</span>
-                            <span className={isSolved ? 'ok' : ''}>{isSolved ? 'Status: SOLVED' : `best: ${q.best_score || 0}`}</span>
+                            <span>{q.difficulty || 'MEDIUM'}</span>
+                            <span className={isSolved ? 'ok' : ''}>{isSolved ? 'Status: SOLVED' : 'Pending Verification'}</span>
                           </div>
                         </div>
                       );
@@ -277,35 +273,29 @@ export const MainArenaPage = () => {
                   </div>
                 </div>
 
-                {/* Final Submit Side Banner */}
-                <div className="panel" style={{ padding: '20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '.8rem', color: 'var(--muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>
-                    Round Submission
+                {/* Info Card */}
+                <div className="panel" style={{ padding: '18px 20px' }}>
+                  <div style={{ fontSize: '.78rem', color: 'var(--muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
+                    Submission Guidelines
                   </div>
-                  <p style={{ fontSize: '.84rem', color: '#cbd5e1', marginBottom: '16px', lineHeight: 1.5 }}>
-                    Finished all 3 questions? Call your volunteer to verify your code and enter their verification code.
+                  <p style={{ fontSize: '.84rem', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+                    Solve each problem in your local environment. Once ready, call a volunteer to verify and submit each question individually!
                   </p>
-                  <button
-                    className={`btn-final-submit ${isAllSolved ? 'completed' : ''}`}
-                    style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={() => {
-                      setSubmitError('');
-                      setVolunteerPass('');
-                      setShowSubmitModal(true);
-                    }}
-                  >
-                    {isAllSolved ? '✓ Round Completed' : '★ Final Volunteer Submit'}
-                  </button>
                 </div>
               </div>
 
               {/* Right column: Problem statement */}
               <div className="problem-col">
                 <div className="panel">
-                  <div className="panel-head">
-                    <span className="panel-title">Problem Statement</span>
+                  <div className="panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="panel-title">Problem Statement</span>
+                      <span style={{ fontSize: '0.78rem', padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', color: '#ffe4a3', fontWeight: 600 }}>
+                        {getSubtypeLabel(selectedQuestion)}
+                      </span>
+                    </div>
                     <span className="stat-pill">
-                      <b id="q-points">{selectedQuestion?.points || 0}</b> pts
+                      <b id="q-points">{selectedQuestion?.points || (selectedQuestion?.id <= 220 ? 2000 : 3000)}</b> pts
                     </span>
                   </div>
                   <div className="problem-body">
@@ -338,6 +328,37 @@ export const MainArenaPage = () => {
                         </div>
                       </>
                     )}
+
+                    {/* Individual Question Action Bar */}
+                    <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                      <div>
+                        {selectedQuestion?.status === 'SOLVED' ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', fontWeight: 700, fontSize: '0.92rem' }}>
+                            ✓ Verified & Solved (+{selectedQuestion?.points || (selectedQuestion?.id <= 220 ? 2000 : 3000)} PTS)
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                            Ready to submit this solution? Call your volunteer.
+                          </span>
+                        )}
+                      </div>
+
+                      {selectedQuestion?.status !== 'SOLVED' && (
+                        <button
+                          type="button"
+                          className="btn-login"
+                          style={{ padding: '12px 24px', width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.92rem' }}
+                          onClick={() => {
+                            setSubmitError('');
+                            setVolunteerPass('');
+                            setSubmitResult(null);
+                            setShowSubmitModal(true);
+                          }}
+                        >
+                          ★ Volunteer Verify & Submit (+{selectedQuestion?.points || (selectedQuestion?.id <= 220 ? 2000 : 3000)} PTS)
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -346,14 +367,14 @@ export const MainArenaPage = () => {
         )}
       </div>
 
-      {/* ── VOLUNTEER FINAL SUBMIT MODAL ── */}
+      {/* ── INDIVIDUAL VOLUNTEER SUBMIT MODAL ── */}
       {showSubmitModal && (
-        <div className="modal-overlay" onClick={() => !isSubmittingFinal && setShowSubmitModal(false)}>
+        <div className="modal-overlay" onClick={() => !isSubmitting && setShowSubmitModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <button
               className="modal-close-btn"
               onClick={() => setShowSubmitModal(false)}
-              disabled={isSubmittingFinal}
+              disabled={isSubmitting}
             >
               ✕
             </button>
@@ -363,30 +384,19 @@ export const MainArenaPage = () => {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🎉</div>
                 <h2 style={{ fontSize: '1.6rem', color: '#6ee7b7', marginBottom: '8px' }}>
-                  Challenge Verified & Solved!
+                  Question Verified & Solved!
                 </h2>
                 <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: '20px' }}>
-                  All 3 questions have been verified and marked as solved.
+                  {submitResult.message || `Problem #${selectedQuestion?.id} successfully submitted.`}
                 </p>
 
                 <div className="total-award-banner">
-                  <div className="total-award-title">Total Score Awarded</div>
-                  <div className="total-award-pts">+{submitResult.total_awarded} PTS</div>
-                </div>
-
-                <div className="score-breakdown-grid">
-                  <div className="score-cell">
-                    <div className="score-cell-val">+{submitResult.completion_points}</div>
-                    <div className="score-cell-lbl">Completion Base</div>
-                  </div>
-                  <div className="score-cell">
-                    <div className="score-cell-val">+{submitResult.time_bonus}</div>
-                    <div className="score-cell-lbl">Time Bonus ({submitResult.remaining_minutes}m × 10)</div>
-                  </div>
+                  <div className="total-award-title">Points Awarded for this Question</div>
+                  <div className="total-award-pts">+{submitResult.points_awarded || selectedQuestion?.points || 2000} PTS</div>
                 </div>
 
                 <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px 18px', borderRadius: '12px', marginBottom: '24px' }}>
-                  <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>Current Team Balance: </span>
+                  <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>Updated Team Balance: </span>
                   <strong style={{ color: '#ffe4a3', fontSize: '1.1rem' }}>{submitResult.team_points} PTS</strong>
                 </div>
 
@@ -396,48 +406,38 @@ export const MainArenaPage = () => {
                   onClick={() => {
                     setShowSubmitModal(false);
                     setSubmitResult(null);
-                    navigate('/');
                   }}
                 >
-                  Return to Landing Page
+                  Continue Coding
                 </button>
               </div>
             ) : (
-              /* Volunteer Password Input & Score Preview */
+              /* Volunteer Passcode Input */
               <div>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>🛡️</div>
-                  <h2 style={{ fontSize: '1.5rem', marginBottom: '6px' }}>
+                  <h2 style={{ fontSize: '1.45rem', marginBottom: '6px' }}>
                     Volunteer Verification
                   </h2>
                   <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>
-                    Have a volunteer check all 3 solutions. Enter verification passcode to claim points and submit.
+                    Verify solution for: <strong style={{ color: '#fff' }}>{selectedQuestion?.title}</strong>
                   </p>
                 </div>
 
-                <div className="score-breakdown-grid">
-                  <div className="score-cell">
-                    <div className="score-cell-val">+1,000</div>
-                    <div className="score-cell-lbl">3-Problem Completion</div>
-                  </div>
-                  <div className="score-cell">
-                    <div className="score-cell-val">+{estTimeBonus}</div>
-                    <div className="score-cell-lbl">Time Bonus ({remainingMins}m × 10)</div>
+                <div className="total-award-banner" style={{ marginBottom: '20px' }}>
+                  <div className="total-award-title">Reward on Verification</div>
+                  <div className="total-award-pts">
+                    +{selectedQuestion?.points || (selectedQuestion?.id <= 220 ? 2000 : 3000)} PTS
                   </div>
                 </div>
 
-                <div className="total-award-banner">
-                  <div className="total-award-title">Estimated Award on Submit</div>
-                  <div className="total-award-pts">+{estTotalAward} PTS</div>
-                </div>
-
-                <form onSubmit={handleFinalSubmit}>
+                <form onSubmit={handleVerifyQuestionSubmit}>
                   <div className="inp-wrap">
-                    <label htmlFor="volunteer-pass">Volunteer / Team Passcode</label>
+                    <label htmlFor="volunteer-pass">Volunteer Passcode</label>
                     <input
                       type="password"
                       id="volunteer-pass"
-                      placeholder="Enter verification passcode"
+                      placeholder="Enter volunteer passcode"
                       autoComplete="off"
                       autoFocus
                       value={volunteerPass}
@@ -457,7 +457,7 @@ export const MainArenaPage = () => {
                       className="btn-logout"
                       style={{ padding: '12px' }}
                       onClick={() => setShowSubmitModal(false)}
-                      disabled={isSubmittingFinal}
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </button>
@@ -465,9 +465,9 @@ export const MainArenaPage = () => {
                       type="submit"
                       className="btn-login"
                       style={{ padding: '12px' }}
-                      disabled={isSubmittingFinal}
+                      disabled={isSubmitting}
                     >
-                      {isSubmittingFinal ? 'Verifying…' : 'Confirm & Submit'}
+                      {isSubmitting ? 'Verifying…' : 'Confirm & Award PTS'}
                     </button>
                   </div>
                 </form>

@@ -76,11 +76,17 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getClock: () => request('/api/main/clock'),
+  verifyMainQuestion: (questionId, passcode) =>
+    request('/api/main/verify-question', {
+      method: 'POST',
+      body: JSON.stringify({ question_id: questionId, passcode }),
+    }),
   finalSubmit: (passcode) =>
     request('/api/main/final-submit', {
       method: 'POST',
       body: JSON.stringify({ passcode }),
     }),
+
 
   // Team & Status
   getTeamStatus: (teamId) => request(`/api/teams/${teamId}/status`),

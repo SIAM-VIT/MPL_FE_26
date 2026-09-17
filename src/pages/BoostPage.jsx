@@ -195,26 +195,26 @@ export const BoostPage = () => {
                 </p>
               </div>
 
-              {/* Total time earned bar */}
-              <div className="time-earned-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', background: 'rgba(16,185,129,.10)', border: '1px solid rgba(16,185,129,.25)', borderRadius: '16px', marginBottom: '24px' }}>
+              {/* Team Balance Bar */}
+              <div className="time-earned-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', background: 'rgba(240,180,41,.10)', border: '1px solid rgba(240,180,41,.25)', borderRadius: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(16,185,129,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6ee7b7' }}>
-                    ⚡
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(240,180,41,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffe4a3' }}>
+                    💰
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>Total Bonus Time Earned</h3>
-                    <p style={{ color: 'var(--muted)', fontSize: '.8rem' }}>Added directly to your 90-minute countdown clock</p>
+                    <h3 style={{ fontSize: '1rem', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>Current Team Score</h3>
+                    <p style={{ color: 'var(--muted)', fontSize: '.8rem' }}>Live points balance (includes winning bids & solved rewards)</p>
                   </div>
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>
-                  +{extraTime || team.extra_time_seconds || 0}s
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#ffe4a3', fontFamily: "'JetBrains Mono', monospace" }}>
+                  {team.points ?? 0} PTS
                 </div>
               </div>
 
               {/* Active Boost Card / Empty State */}
               {loading ? (
                 <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted)' }}>
-                  Loading time boost status…
+                  Loading bidding question status…
                 </div>
               ) : activeBoost ? (
                 <div className="q-card" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '20px', overflow: 'hidden', backdropFilter: 'blur(20px)', boxShadow: '0 20px 50px rgba(0,0,0,.4)' }}>
@@ -222,7 +222,7 @@ export const BoostPage = () => {
                     <div>
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
                         <span className="badge badge-boost" style={{ background: 'rgba(240,180,41,.15)', color: '#ffe4a3', border: '1px solid rgba(240,180,41,.25)', padding: '3px 10px', borderRadius: '100px', fontSize: '.75rem', fontWeight: 700 }}>
-                          TIME BOOST
+                          BIDDING QUESTION
                         </span>
                         <span className={`badge ${diffBadgeClass(activeBoost.difficulty)}`} style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '.75rem', fontWeight: 700 }}>
                           {activeBoost.difficulty || 'MEDIUM'}
@@ -235,13 +235,14 @@ export const BoostPage = () => {
 
                     <div style={{ textAlign: 'right', background: 'rgba(16,185,129,.12)', border: '1px solid rgba(16,185,129,.25)', padding: '10px 18px', borderRadius: '14px' }}>
                       <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>
-                        +{activeBoost.reward_minutes} MINS
+                        +{activeBoost.difficulty === 'EASY' ? '500' : activeBoost.difficulty === 'HARD' ? '1,000' : '800'} PTS
                       </div>
                       <div style={{ fontSize: '.7rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
-                        Bonus Reward (+{activeBoost.reward_seconds}s)
+                        Reward on Solve
                       </div>
                     </div>
                   </div>
+
 
                   <div style={{ padding: '28px' }}>
                     <div style={{ fontSize: '.75rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '10px' }}>

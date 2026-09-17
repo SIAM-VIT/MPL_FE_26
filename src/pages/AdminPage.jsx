@@ -27,8 +27,10 @@ export const AdminPage = () => {
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState(null);
 
-  // Assign boost form
+  // Assign bidding form
   const [boostTeamId, setBoostTeamId] = useState('');
+  const [biddingQuestionId, setBiddingQuestionId] = useState('');
+  const [bidDeductAmount, setBidDeductAmount] = useState(0);
   const [boostDifficulty, setBoostDifficulty] = useState('MEDIUM');
   const [boostOk, setBoostOk] = useState('');
   const [boostErr, setBoostErr] = useState('');
@@ -45,6 +47,7 @@ export const AdminPage = () => {
   const [isStartingChallenge, setIsStartingChallenge] = useState(false);
   const [isChallengePortalUnlocked, setIsChallengePortalUnlocked] = useState(false);
   const [isTogglingPortal, setIsTogglingPortal] = useState(false);
+
 
   const fetchAdminData = async () => {
     if (!isAdmin) return;
@@ -214,20 +217,29 @@ export const AdminPage = () => {
     setBoostOk('');
     setBoostErr('');
     if (!boostTeamId) {
-      setBoostErr('Select a team to assign a time boost.');
+      setBoostErr('Select a team to assign a bidding question.');
+      return;
+    }
+    if (!biddingQuestionId) {
+      setBoostErr('Please select a bidding question.');
       return;
     }
     try {
-      const res = await api.assignRandomBoost(parseInt(boostTeamId), boostDifficulty);
-      const q = res?.question;
-      const rewardMins = (q?.reward_seconds || 600) / 60;
-      setBoostOk(`Assigned ${q?.difficulty || boostDifficulty} Boost: "${q?.title}" (+${rewardMins}m) to team #${boostTeamId}`);
-      addToast('Random boost question assigned successfully!', 'success');
+      const deduct = parseInt(bidDeductAmount) || 0;
+      await api.assignBoost({
+        team_id: parseInt(boostTeamId),
+        question_id: parseInt(biddingQuestionId),
+        deduct_amount: deduct,
+      });
+      const selectedQ = questions.find((q) => q.id === parseInt(biddingQuestionId));
+      setBoostOk(`Assigned Bidding Question: "${selectedQ?.title || `#${biddingQuestionId}`}" to Team #${boostTeamId}. Deducted ${deduct} pts.`);
+      addToast(`Bidding question assigned! Deducted ${deduct} pts from team balance.`, 'success');
       fetchAdminData();
     } catch (err) {
-      setBoostErr(err.message || 'Failed to assign boost.');
+      setBoostErr(err.message || 'Failed to assign bidding question.');
     }
   };
+
 
   const handleStartChallenge = async () => {
     setChOk('');
@@ -420,8 +432,9 @@ export const AdminPage = () => {
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                   </svg>
                 </span>
-                &nbsp;Assign Boost
+                &nbsp;Bidding Allocation
               </div>
+
 
               <div
                 className={`nav-item ${activePanel === 'challenge' ? 'active' : ''}`}
@@ -895,14 +908,14 @@ export const AdminPage = () => {
               </div>
             )}
 
-            {/* PANEL: ASSIGN BOOST */}
+            {/* PANEL: ASSIGN BIDDING */}
             {activePanel === 'assign' && (
               <div className="panel active" id="panel-assign">
                 <div className="section-hdr">
-                  <h1>Bidding / Time Boost Allocation</h1>
-                  <p>Select a team and difficulty to assign a random bonus time question.</p>
+                  <h1>Bidding Question Allocation</h1>
+                  <p>Assign an auctioned bidding question to a team and deduct their winning bid amount.</p>
                 </div>
-                <div className="card" style={{ maxWidth: '540px' }}>
+                <div className="card" style={{ maxWidth: '600px' }}>
                   <div className="card-body">
                     {boostOk && <div className="alert alert-success">{boostOk}</div>}
                     {boostErr && <div className="alert alert-error">{boostErr}</div>}
@@ -911,36 +924,58 @@ export const AdminPage = () => {
                       <select value={boostTeamId} onChange={(e) => setBoostTeamId(e.target.value)}>
                         <option value="">Select a team…</option>
                         {teams.map((t) => (
-                          <option key={t.id} value={t.id}>#{t.id} - {t.name} (Bonus: +{t.extra_time_seconds || 0}s)</option>
+                          <option key={t.id} value={t.id}>
+                            #{t.id} - {t.name} (Current Balance: {t.points || 0} pts)
+                          </option>
                         ))}
                       </select>
                     </div>
                     <div className="form-row">
-                      <label>Select Difficulty & Bonus Reward</label>
-                      <select value={boostDifficulty} onChange={(e) => setBoostDifficulty(e.target.value)}>
-                        <option value="EASY">Easy — +5 Minutes (+300s)</option>
-                        <option value="MEDIUM">Medium — +10 Minutes (+600s)</option>
-                        <option value="HARD">Hard — +15 Minutes (+900s)</option>
+                      <label>Select Bidding Question</label>
+                      <select value={biddingQuestionId} onChange={(e) => setBiddingQuestionId(e.target.value)}>
+                        <option value="">Select a bidding question…</option>
+                        {questions
+                          .filter((q) => q.type === 'TIME_BOOST' || (q.id >= 501 && q.id <= 524))
+                          .map((q) => {
+                            const rewardPts = q.difficulty === 'EASY' ? 500 : q.difficulty === 'HARD' ? 1000 : 800;
+                            return (
+                              <option key={q.id} value={q.id}>
+                                #{q.id} [{q.difficulty || 'MEDIUM'}] {q.title} (+{rewardPts} PTS Reward)
+                              </option>
+                            );
+                          })}
                       </select>
                     </div>
+                    <div className="form-row">
+                      <label>Bid Amount to Deduct from Team (PTS)</label>
+                      <input
+                        type="number"
+                        placeholder="Enter winning bid amount (e.g. 100, 250)"
+                        value={bidDeductAmount}
+                        onChange={(e) => setBidDeductAmount(e.target.value)}
+                        min="0"
+                      />
+                    </div>
                     <p style={{ color: 'var(--muted)', fontSize: '.84rem', margin: '14px 0 18px', lineHeight: 1.5 }}>
-                      A random question matching this difficulty will be allocated to the team. The participant will only see this assigned question on their Boost page.
+                      When assigned, the bid amount is deducted from the team balance (points can go into negative). Upon volunteer verification, the team earns <strong>+500 PTS (Easy)</strong>, <strong>+800 PTS (Medium)</strong>, or <strong>+1,000 PTS (Hard)</strong>.
                     </p>
                     <button className="btn btn-gold" onClick={handleAssignBoost} style={{ width: '100%', justifyContent: 'center' }}>
-                      ⚡ Assign Random Boost Question
+                      ⚡ Assign Bidding Question & Deduct Bid
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
+
             {/* PANEL: CHALLENGE */}
             {activePanel === 'challenge' && (
               <div className="panel active" id="panel-challenge">
                 <div className="section-hdr">
                   <h1>Challenge Arena (1v1 & 1v1v1)</h1>
-                  <p>Pair two or three teams for a high-stakes battle. The winning team earns 100 points taken from the losing team(s).</p>
+                  <p>Pair two or three teams for a high-stakes battle. The winning team earns 500 points taken from the losing team(s).</p>
                 </div>
+
 
                 {/* ── GLOBAL CHALLENGE ARENA GATE TOGGLE CARD ── */}
                 <div

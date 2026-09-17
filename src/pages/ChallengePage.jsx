@@ -360,8 +360,9 @@ export const ChallengePage = () => {
                         <div style={{ color: '#fca5a5', fontWeight: 800, fontSize: '1.05rem' }}>
                           Team {activeSession.winner_name || activeSession.opponent_name} already completed this challenge!
                         </div>
+
                         <div style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '2px' }}>
-                          The 1v1 battle has ended. 100 points were transferred from your score to {activeSession.winner_name || activeSession.opponent_name}.
+                          The 1v1 battle has ended. 500 points were transferred from your score to {activeSession.winner_name || activeSession.opponent_name}.
                         </div>
                       </div>
                     </div>
@@ -387,7 +388,7 @@ export const ChallengePage = () => {
                           Victory! Your team claimed 1st place in this 1v1 battle!
                         </div>
                         <div style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '2px' }}>
-                          +100 points have been successfully added to your team leaderboard score.
+                          +500 points have been successfully added to your team leaderboard score.
                         </div>
                       </div>
                     </div>
@@ -398,12 +399,13 @@ export const ChallengePage = () => {
                     <div className="q-header">
                       <div className="q-meta">
                         <span className="badge badge-challenge">1v1 Challenge</span>
-                        <span className="badge badge-hard">100 Pts Stake</span>
+                        <span className="badge badge-hard">500 Pts Stake</span>
                       </div>
                       <div className="q-title">
                         {activeSession.title || `1v1 Challenge Problem #${activeSession.question_id}`}
                       </div>
                     </div>
+
 
                     <div className="tabs">
                       <div className={`tab ${activeTab === 'description' ? 'active' : ''}`} onClick={() => setActiveTab('description')}>
