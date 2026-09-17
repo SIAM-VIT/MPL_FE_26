@@ -79,7 +79,7 @@ export const AdminPage = () => {
       }
 
       const unauthorized = results.find(
-        (r) => r.status === 'rejected' && (r.reason?.status === 401 || r.reason?.message?.includes('401'))
+        (r) => r.status === 'rejected' && r.reason?.status === 401
       );
       if (unauthorized) {
         logoutAdmin();
