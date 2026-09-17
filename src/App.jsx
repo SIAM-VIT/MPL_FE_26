@@ -11,8 +11,10 @@ import { BoostPage } from './pages/BoostPage';
 import { ChallengePage } from './pages/ChallengePage';
 
 export const App = () => {
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined;
+
   return (
-    <BrowserRouter basename="/ui" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <ToastProvider>
           <Routes>
