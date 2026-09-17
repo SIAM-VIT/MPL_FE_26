@@ -111,7 +111,7 @@ export const AdminPage = () => {
       addToast('Admin authenticated successfully', 'success');
     } catch (err) {
       setLoginErr(true);
-      addToast(err.message || 'Invalid admin passcode (Default: admin123)', 'error');
+      addToast(err.message || 'Invalid admin passcode', 'error');
     }
   };
 
