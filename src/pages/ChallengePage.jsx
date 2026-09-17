@@ -14,6 +14,7 @@ export const ChallengePage = () => {
   const [errMsg, setErrMsg] = useState('');
 
   const [activeSession, setActiveSession] = useState(null);
+  const [isPortalUnlocked, setIsPortalUnlocked] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
 
   // Submission state
@@ -27,16 +28,23 @@ export const ChallengePage = () => {
     try {
       const res = await api.getTeamStatus(team.id);
       setActiveSession(res?.active_challenge_session || null);
+      setIsPortalUnlocked(
+        Boolean(res?.challenge_portal_unlocked ?? res?.active_challenge_session?.portal_unlocked)
+      );
     } catch (_) {}
   };
 
   useEffect(() => {
-    if (team) {
-      checkChallenge();
-      const interval = setInterval(checkChallenge, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [team]);
+    if (!team) return;
+    checkChallenge();
+
+    // If session is already completed, poll at a relaxed rate, otherwise poll every 3 seconds
+    const isCompleted = activeSession && activeSession.status === 'COMPLETED';
+    const pollInterval = isCompleted ? 15000 : 3000;
+
+    const interval = setInterval(checkChallenge, pollInterval);
+    return () => clearInterval(interval);
+  }, [team, activeSession?.status]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -91,6 +99,7 @@ export const ChallengePage = () => {
   const isOngoing = activeSession && activeSession.status === 'ONGOING';
   const isWinner = activeSession && (activeSession.is_winner || submitResult?.is_winner);
   const isAlreadyDone = activeSession && (activeSession.already_done || submitResult?.already_done);
+  const isGateLocked = activeSession && !isPortalUnlocked && !activeSession.portal_unlocked;
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
@@ -183,7 +192,7 @@ export const ChallengePage = () => {
             </div>
 
             {!activeSession ? (
-              /* ── WAITING / NO 1v1 MATCH ── */
+              /* ── STATE 1: WAITING / NO MATCH ASSIGNED YET ── */
               <div id="locked-state" style={{ display: 'block' }}>
                 <div className="lock-anim">
                   <svg className="mpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -206,8 +215,53 @@ export const ChallengePage = () => {
                   <span>Checking for assigned 1v1 match every 3 seconds…</span>
                 </div>
               </div>
+            ) : isGateLocked ? (
+              /* ── STATE 2: MATCH ASSIGNED BUT ARENA GATE IS LOCKED BY ADMIN ── */
+              <div id="locked-state" style={{ display: 'block' }}>
+                <div
+                  className="lock-anim"
+                  style={{
+                    borderColor: 'rgba(240, 180, 41, 0.4)',
+                    background: 'rgba(240, 180, 41, 0.08)',
+                    boxShadow: '0 0 40px rgba(240, 180, 41, 0.15)',
+                  }}
+                >
+                  <span style={{ fontSize: '3rem' }}>🔒</span>
+                </div>
+                <div className="lock-title" style={{ color: 'var(--gold-light)' }}>
+                  Challenge Arena Locked
+                </div>
+                <p className="lock-sub" style={{ maxWidth: '460px', marginBottom: '20px' }}>
+                  Match assigned: <strong>{team.name}</strong> <span style={{ color: 'var(--gold-light)' }}>VS</span> <strong>{activeSession.opponent_name}</strong> (100 pts stake).
+                  <br /><br />
+                  The tournament admin is preparing everyone's challenge matches. The challenge problem will <strong>automatically unlock</strong> on this screen the moment the host opens the arena gate!
+                </p>
+
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 18px',
+                    borderRadius: '100px',
+                    background: 'rgba(240, 180, 41, 0.12)',
+                    border: '1px solid rgba(240, 180, 41, 0.3)',
+                    color: '#ffe4a3',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    marginBottom: '24px',
+                  }}
+                >
+                  <span>⏳</span> Standing by for host gate unlock…
+                </div>
+
+                <div className="poll-indicator">
+                  <div className="poll-dot" style={{ background: 'var(--gold)' }} />
+                  <span>Checking Arena gate status every 3 seconds…</span>
+                </div>
+              </div>
             ) : (
-              /* ── 1v1 BATTLE VIEW ── */
+              /* ── STATE 3: 1v1 BATTLE VIEW (UNLOCKED & LIVE / COMPLETED) ── */
               <div id="active-state" style={{ display: 'block' }}>
                 <div className="wrap">
                   {/* ── VS BANNER ── */}
@@ -219,7 +273,11 @@ export const ChallengePage = () => {
                         : isAlreadyDone
                         ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(127, 29, 29, 0.45))'
                         : undefined,
-                      borderColor: isWinner ? 'rgba(16, 185, 129, 0.4)' : isAlreadyDone ? 'rgba(239, 68, 68, 0.4)' : undefined,
+                      borderColor: isWinner
+                        ? 'rgba(16, 185, 129, 0.4)'
+                        : isAlreadyDone
+                        ? 'rgba(239, 68, 68, 0.4)'
+                        : undefined,
                     }}
                   >
                     <div className="cb-icon">
@@ -428,4 +486,3 @@ export const ChallengePage = () => {
     </div>
   );
 };
-

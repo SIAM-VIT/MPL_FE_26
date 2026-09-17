@@ -43,6 +43,8 @@ export const AdminPage = () => {
   const [challengeSessions, setChallengeSessions] = useState([]);
   const [challengeQuestions, setChallengeQuestions] = useState([]);
   const [isStartingChallenge, setIsStartingChallenge] = useState(false);
+  const [isChallengePortalUnlocked, setIsChallengePortalUnlocked] = useState(false);
+  const [isTogglingPortal, setIsTogglingPortal] = useState(false);
 
   const fetchAdminData = async () => {
     if (!isAdmin) return;
@@ -54,6 +56,7 @@ export const AdminPage = () => {
         api.getLeaderboard(),
         api.getChallengeSessions(),
         api.getChallengeQuestions(),
+        api.getChallengePortalStatus(),
       ]);
 
       if (results[0].status === 'fulfilled') setTeams(results[0].value || []);
@@ -70,6 +73,9 @@ export const AdminPage = () => {
         if (!chQId && cqList.length > 0) {
           setChQId(cqList[0].id);
         }
+      }
+      if (results[6].status === 'fulfilled') {
+        setIsChallengePortalUnlocked(Boolean(results[6].value?.is_unlocked));
       }
 
       const unauthorized = results.find(
@@ -275,6 +281,23 @@ export const AdminPage = () => {
       await fetchAdminData();
     } catch (err) {
       addToast(err.message || 'Failed to resolve match', 'error');
+    }
+  };
+
+  const handleToggleChallengePortal = async () => {
+    setIsTogglingPortal(true);
+    try {
+      const res = await api.toggleChallengePortal();
+      setIsChallengePortalUnlocked(res.is_unlocked);
+      addToast(
+        res.message || `Challenge Arena is now ${res.is_unlocked ? 'UNLOCKED' : 'LOCKED'}.`,
+        res.is_unlocked ? 'success' : 'info'
+      );
+      await fetchAdminData();
+    } catch (err) {
+      addToast(err.message || 'Failed to toggle Challenge Arena portal.', 'error');
+    } finally {
+      setIsTogglingPortal(false);
     }
   };
 
@@ -917,6 +940,93 @@ export const AdminPage = () => {
                 <div className="section-hdr">
                   <h1>Challenge Arena (1v1 & 1v1v1)</h1>
                   <p>Pair two or three teams for a high-stakes battle. The winning team earns 100 points taken from the losing team(s).</p>
+                </div>
+
+                {/* ── GLOBAL CHALLENGE ARENA GATE TOGGLE CARD ── */}
+                <div
+                  className="card"
+                  style={{
+                    marginBottom: '24px',
+                    border: `1px solid ${isChallengePortalUnlocked ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.45)'}`,
+                    background: isChallengePortalUnlocked
+                      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 78, 59, 0.25))'
+                      : 'linear-gradient(135deg, rgba(239, 68, 68, 0.10), rgba(127, 29, 29, 0.20))',
+                    boxShadow: isChallengePortalUnlocked ? '0 8px 32px rgba(16, 185, 129, 0.15)' : '0 8px 32px rgba(239, 68, 68, 0.12)',
+                  }}
+                >
+                  <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1 1 320px' }}>
+                      <div
+                        style={{
+                          width: '52px',
+                          height: '52px',
+                          borderRadius: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1.6rem',
+                          background: isChallengePortalUnlocked ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                          border: `1px solid ${isChallengePortalUnlocked ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                        }}
+                      >
+                        {isChallengePortalUnlocked ? '🔓' : '🔒'}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Challenge Arena Gate</h3>
+                          <span
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: '100px',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              background: isChallengePortalUnlocked ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                              color: isChallengePortalUnlocked ? '#34d399' : '#f87171',
+                              border: `1px solid ${isChallengePortalUnlocked ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                            }}
+                          >
+                            {isChallengePortalUnlocked ? '🟢 UNLOCKED & LIVE' : '🔴 LOCKED'}
+                          </span>
+                        </div>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {isChallengePortalUnlocked
+                            ? 'The Arena is OPEN. Participants can view questions and submit volunteer passcodes in real-time.'
+                            : 'The Arena is LOCKED. Participants see a locked standby screen while you setup matches.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={handleToggleChallengePortal}
+                      disabled={isTogglingPortal}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: '0.92rem',
+                        fontWeight: 700,
+                        background: isChallengePortalUnlocked
+                          ? 'rgba(239, 68, 68, 0.25)'
+                          : 'linear-gradient(135deg, #10b981, #059669)',
+                        color: isChallengePortalUnlocked ? '#fca5a5' : '#ffffff',
+                        border: `1px solid ${isChallengePortalUnlocked ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.5)'}`,
+                        boxShadow: isChallengePortalUnlocked ? 'none' : '0 0 15px rgba(16, 185, 129, 0.35)',
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      {isTogglingPortal ? (
+                        <span className="spinner" />
+                      ) : isChallengePortalUnlocked ? (
+                        '🔒 Lock Challenge Arena'
+                      ) : (
+                        '🔓 Unlock Arena for All Teams'
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* ── CREATE BATTLE CARD ── */}

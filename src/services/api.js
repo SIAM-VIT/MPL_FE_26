@@ -170,6 +170,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  getChallengePortalStatus: () => request('/api/admin/challenge/portal-status'),
+  toggleChallengePortal: (payload) =>
+    request('/api/admin/challenge/portal-toggle', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }),
+  getPublicChallengePortalStatus: () => request('/api/teams/challenge/portal-status'),
   assignBoost: (payload) =>
     request('/api/admin/assign-boost', {
       method: 'POST',

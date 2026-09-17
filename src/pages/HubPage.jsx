@@ -13,7 +13,7 @@ export const HubPage = () => {
             <div className="live-dot" /> Event Active
           </div>
           <h1>
-            Mini Programming<br />League
+            Math Premier<br />League
           </h1>
           <p className="subtitle">
             Compete, solve, and dominate. Choose your arena below to get started.
