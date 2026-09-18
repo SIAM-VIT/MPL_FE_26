@@ -109,11 +109,12 @@ export const api = {
       headers: { 'admin-passcode': passcode },
     }),
   getTeams: () => request('/api/admin/teams'),
-  assignRandomBoost: (teamId, difficulty) =>
+  assignRandomBoost: (teamId, difficulty, deductAmount = 0) =>
     request(`/api/admin/teams/${teamId}/assign-random-boost`, {
       method: 'POST',
-      body: JSON.stringify({ difficulty }),
+      body: JSON.stringify({ difficulty, deduct_amount: deductAmount }),
     }),
+
   createTeam: (payload) =>
     request('/api/admin/teams', {
       method: 'POST',

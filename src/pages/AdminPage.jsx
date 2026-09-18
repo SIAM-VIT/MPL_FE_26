@@ -220,25 +220,23 @@ export const AdminPage = () => {
       setBoostErr('Select a team to assign a bidding question.');
       return;
     }
-    if (!biddingQuestionId) {
-      setBoostErr('Please select a bidding question.');
-      return;
-    }
     try {
       const deduct = parseInt(bidDeductAmount) || 0;
-      await api.assignBoost({
-        team_id: parseInt(boostTeamId),
-        question_id: parseInt(biddingQuestionId),
-        deduct_amount: deduct,
-      });
-      const selectedQ = questions.find((q) => q.id === parseInt(biddingQuestionId));
-      setBoostOk(`Assigned Bidding Question: "${selectedQ?.title || `#${biddingQuestionId}`}" to Team #${boostTeamId}. Deducted ${deduct} pts.`);
-      addToast(`Bidding question assigned! Deducted ${deduct} pts from team balance.`, 'success');
+      const res = await api.assignRandomBoost(
+        parseInt(boostTeamId),
+        boostDifficulty,
+        deduct
+      );
+      const q = res?.question;
+      const pts = q?.reward_points || (boostDifficulty === 'EASY' ? 500 : boostDifficulty === 'HARD' ? 1000 : 800);
+      setBoostOk(`Assigned ${q?.difficulty || boostDifficulty} Question: "${q?.title}" (+${pts} PTS) to Team #${boostTeamId}. Deducted ${deduct} pts.`);
+      addToast(`Random ${boostDifficulty} question allocated! Deducted ${deduct} pts from team balance.`, 'success');
       fetchAdminData();
     } catch (err) {
-      setBoostErr(err.message || 'Failed to assign bidding question.');
+      setBoostErr(err.message || 'Failed to allocate bidding question.');
     }
   };
+
 
 
   const handleStartChallenge = async () => {
@@ -913,7 +911,7 @@ export const AdminPage = () => {
               <div className="panel active" id="panel-assign">
                 <div className="section-hdr">
                   <h1>Bidding Question Allocation</h1>
-                  <p>Assign an auctioned bidding question to a team and deduct their winning bid amount.</p>
+                  <p>Choose difficulty (Easy, Medium, or Hard) to randomly allocate a question to the team and deduct their winning bid amount.</p>
                 </div>
                 <div className="card" style={{ maxWidth: '600px' }}>
                   <div className="card-body">
@@ -931,19 +929,11 @@ export const AdminPage = () => {
                       </select>
                     </div>
                     <div className="form-row">
-                      <label>Select Bidding Question</label>
-                      <select value={biddingQuestionId} onChange={(e) => setBiddingQuestionId(e.target.value)}>
-                        <option value="">Select a bidding question…</option>
-                        {questions
-                          .filter((q) => q.type === 'TIME_BOOST' || (q.id >= 501 && q.id <= 524))
-                          .map((q) => {
-                            const rewardPts = q.difficulty === 'EASY' ? 500 : q.difficulty === 'HARD' ? 1000 : 800;
-                            return (
-                              <option key={q.id} value={q.id}>
-                                #{q.id} [{q.difficulty || 'MEDIUM'}] {q.title} (+{rewardPts} PTS Reward)
-                              </option>
-                            );
-                          })}
+                      <label>Select Difficulty & Solve Reward</label>
+                      <select value={boostDifficulty} onChange={(e) => setBoostDifficulty(e.target.value)}>
+                        <option value="EASY">Easy — Reward: +500 PTS</option>
+                        <option value="MEDIUM">Medium — Reward: +800 PTS</option>
+                        <option value="HARD">Hard — Reward: +1,000 PTS</option>
                       </select>
                     </div>
                     <div className="form-row">
@@ -957,15 +947,16 @@ export const AdminPage = () => {
                       />
                     </div>
                     <p style={{ color: 'var(--muted)', fontSize: '.84rem', margin: '14px 0 18px', lineHeight: 1.5 }}>
-                      When assigned, the bid amount is deducted from the team balance (points can go into negative). Upon volunteer verification, the team earns <strong>+500 PTS (Easy)</strong>, <strong>+800 PTS (Medium)</strong>, or <strong>+1,000 PTS (Hard)</strong>.
+                      A random question matching this difficulty will be allocated to the team. The bid amount is deducted from the team balance (points can go into negative). Upon volunteer verification, the team earns <strong>+500 PTS (Easy)</strong>, <strong>+800 PTS (Medium)</strong>, or <strong>+1,000 PTS (Hard)</strong>.
                     </p>
                     <button className="btn btn-gold" onClick={handleAssignBoost} style={{ width: '100%', justifyContent: 'center' }}>
-                      ⚡ Assign Bidding Question & Deduct Bid
+                      ⚡ Allocate Random Bidding Question & Deduct Bid
                     </button>
                   </div>
                 </div>
               </div>
             )}
+
 
 
             {/* PANEL: CHALLENGE */}
